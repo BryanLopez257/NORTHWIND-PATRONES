@@ -1,0 +1,6 @@
+global using System;
+global using System.Threading.Tasks;
+global using NorthWind.Entities.Interfaces;
+global using NorthWind.DomainLogs.Entities.Interfaces;
+global using NorthWind.DomainLogs.Entities.Services;
+global using NorthWind.DomainLogs.Entities.ValueObjects;

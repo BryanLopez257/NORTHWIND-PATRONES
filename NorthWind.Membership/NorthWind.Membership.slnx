@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="../1. Enterprise Business Rules/NorthWind.HttpDelegatingHandlers/NorthWind.HttpDelegatingHandlers.csproj" />
+  <Project Path="../1. Enterprise Business Rules/NorthWind.Result.Entities/NorthWind.Result.Entities.csproj" />
+  <Project Path="../1. Enterprise Business Rules/NorthWind.Validation.Entities/NorthWind.Validation.Entities.csproj" />
+  <Project Path="../3. Interface Adapters/Views/NorthWind.RazorComponents/NorthWind.RazorComponents.csproj" />
+  <Project Path="NorthWind.Membership.Backend.AspNetIdentity/NorthWind.Membership.Backend.AspNetIdentity.csproj" />
+  <Project Path="NorthWind.Membership.Backend.Core/NorthWind.Membership.Backend.Core.csproj" />
+  <Project Path="NorthWind.Membership.Entities/NorthWind.Membership.Entities.csproj" />
+  <Project Path="NorthWind.Membership.Frontend.RazorViews/NorthWind.Membership.Frontend.RazorViews.csproj" />
+</Solution>

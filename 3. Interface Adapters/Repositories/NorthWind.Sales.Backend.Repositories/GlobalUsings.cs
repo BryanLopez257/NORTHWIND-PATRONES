@@ -1,0 +1,16 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using Microsoft.Extensions.DependencyInjection;
+global using NorthWind.DomainLogs.Entities.Interfaces;
+global using NorthWind.Sales.Backend.BusinessObjects.Aggregates;
+global using NorthWind.Sales.Backend.BusinessObjects.Interfaces.Repositories;
+global using NorthWind.Sales.Backend.BusinessObjects.POCOEntities;
+global using NorthWind.Sales.Backend.BusinessObjects.ValueObjects;
+global using NorthWind.Sales.Backend.Repositories.Entities;
+global using NorthWind.Sales.Backend.Repositories.Interfaces;
+global using NorthWind.Sales.Backend.Repositories.Repositories;
+global using NorthWind.Sales.Entities.Dtos.Products;
+global using NorthWind.Sales.Entities.Dtos.Customers;
+global using NorthWind.Sales.Entities.Dtos.Invoices;

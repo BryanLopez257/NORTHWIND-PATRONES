@@ -1,0 +1,37 @@
+@namespace NorthWind.Membership.Frontend.RazorViews.Components
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="d-flex align-items-center gap-2">
+    <AuthorizeView>
+        <Authorized>
+            <div class="user-badge me-2">
+                <span class="user-avatar-dot">
+                    <i class="bi bi-person-fill"></i>
+                </span>
+                <span>@GetUserName(context)</span>
+            </div>
+            <a href="user/logout" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>@CommonMessages.CloseSessionText</span>
+            </a>
+        </Authorized>
+        <NotAuthorized>
+            <a href="user/register" class="btn btn-sm btn-secondary d-inline-flex align-items-center gap-1">
+                <i class="bi bi-person-plus"></i>
+                <span>@CommonMessages.CreateAccountText</span>
+            </a>
+            <a href="user/login" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
+                <i class="bi bi-box-arrow-in-right"></i>
+                <span>@CommonMessages.LoginText</span>
+            </a>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    string GetUserName(AuthenticationState context) =>
+        context.User.Claims
+            .Where(c => c.Type == "FullName")
+            .Select(c => c.Value)
+            .FirstOrDefault() ?? context.User.Identity?.Name;
+}

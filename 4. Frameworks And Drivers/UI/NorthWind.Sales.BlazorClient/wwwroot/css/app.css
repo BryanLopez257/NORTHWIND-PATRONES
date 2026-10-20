@@ -1,0 +1,620 @@
+/* ==========================================================================
+   NorthWind Sales - Modern UI Design System
+   ========================================================================== */
+
+:root {
+    --nw-primary: #2563eb;
+    --nw-primary-hover: #1d4ed8;
+    --nw-primary-light: #eff6ff;
+    --nw-secondary: #64748b;
+    --nw-success: #10b981;
+    --nw-danger: #ef4444;
+    --nw-warning: #f59e0b;
+    --nw-dark: #0f172a;
+    --nw-surface: #ffffff;
+    --nw-background: #f8fafc;
+    --nw-border: #e2e8f0;
+    --nw-border-focus: #93c5fd;
+    --nw-text-main: #1e293b;
+    --nw-text-muted: #64748b;
+    --nw-radius-sm: 8px;
+    --nw-radius-md: 12px;
+    --nw-radius-lg: 16px;
+    --nw-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --nw-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --nw-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    --nw-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--nw-background);
+    color: var(--nw-text-main);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Typography & Base Links
+   ========================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--nw-dark);
+    letter-spacing: -0.02em;
+}
+
+a {
+    color: var(--nw-primary);
+    text-decoration: none;
+    transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+a:hover {
+    color: var(--nw-primary-hover);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Form Controls & Inputs
+   ========================================================================== */
+
+.form-label, label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.form-control, .form-select {
+    border-radius: var(--nw-radius-sm);
+    border: 1px solid var(--nw-border);
+    padding: 0.65rem 0.95rem;
+    font-size: 0.925rem;
+    color: var(--nw-text-main);
+    background-color: #ffffff;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--nw-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+/* Validation states */
+.validation-message {
+    color: var(--nw-danger);
+    font-size: 0.825rem;
+    font-weight: 500;
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.validation-errors {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--nw-radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    color: #991b1b;
+}
+
+.validation-errors ul {
+    margin-bottom: 0;
+    padding-left: 1.25rem;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+    border-radius: var(--nw-radius-sm);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.65rem 1.25rem;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: var(--nw-primary);
+    border-color: var(--nw-primary);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--nw-primary-hover);
+    border-color: var(--nw-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.35);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #334155;
+}
+
+.btn-secondary:hover {
+    background-color: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.btn-danger {
+    background-color: var(--nw-danger);
+    border-color: var(--nw-danger);
+    color: white;
+}
+
+.btn-outline-primary {
+    border-color: var(--nw-primary);
+    color: var(--nw-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--nw-primary);
+    color: white;
+}
+
+/* ==========================================================================
+   Cards & Containers
+   ========================================================================== */
+
+.card {
+    background: #ffffff;
+    border: 1px solid var(--nw-border);
+    border-radius: var(--nw-radius-md);
+    box-shadow: var(--nw-shadow-md);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--nw-border);
+    padding: 1.25rem 1.5rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--nw-dark);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* ==========================================================================
+   Alerts & Notifications
+   ========================================================================== */
+
+.alert {
+    border-radius: var(--nw-radius-md);
+    border: none;
+    padding: 1rem 1.25rem;
+    font-size: 0.925rem;
+    box-shadow: var(--nw-shadow-sm);
+}
+
+.alert-info {
+    background-color: #eff6ff;
+    color: #1e40af;
+    border-left: 4px solid var(--nw-primary);
+}
+
+.alert-success {
+    background-color: #f0fdf4;
+    color: #166534;
+    border-left: 4px solid var(--nw-success);
+}
+
+.alert-warning {
+    background-color: #fffbeb;
+    color: #92400e;
+    border-left: 4px solid var(--nw-warning);
+}
+
+.alert-danger {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border-left: 4px solid var(--nw-danger);
+}
+
+/* ==========================================================================
+   Authentication Screens (Login & Register)
+   ========================================================================== */
+
+.auth-wrapper {
+    min-height: calc(100vh - 8rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 480px;
+    background: #ffffff;
+    border-radius: var(--nw-radius-lg);
+    border: 1px solid var(--nw-border);
+    box-shadow: var(--nw-shadow-xl);
+    overflow: hidden;
+}
+
+.auth-card-wide {
+    max-width: 580px;
+}
+
+.auth-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem 2rem;
+}
+
+.auth-icon-badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: white;
+    font-size: 1.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.35);
+    margin-bottom: 1rem;
+}
+
+.auth-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--nw-dark);
+    margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+    color: var(--nw-text-muted);
+    font-size: 0.875rem;
+}
+
+.auth-body {
+    padding: 1.5rem 2rem 2rem 2rem;
+}
+
+.auth-footer {
+    padding: 1rem 2rem 1.5rem 2rem;
+    border-top: 1px solid var(--nw-border);
+    text-align: center;
+    font-size: 0.875rem;
+    background-color: #f8fafc;
+}
+
+/* ==========================================================================
+   Create Order Page & Components
+   ========================================================================== */
+
+.order-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem 0;
+}
+
+.order-header-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: white;
+    border-radius: var(--nw-radius-lg);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--nw-shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.order-header-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.order-header-title {
+    color: #ffffff;
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.order-header-desc {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    max-width: 650px;
+    margin-bottom: 0;
+}
+
+.order-section-card {
+    background: #ffffff;
+    border-radius: var(--nw-radius-md);
+    border: 1px solid var(--nw-border);
+    box-shadow: var(--nw-shadow-md);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.order-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--nw-border);
+}
+
+.product-row-item {
+    background: #f8fafc;
+    border: 1px solid var(--nw-border);
+    border-radius: var(--nw-radius-sm);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.product-row-item:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.special-order-badge {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ==========================================================================
+   Home / Dashboard Page
+   ========================================================================== */
+
+.hero-section {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #2563eb 150%);
+    color: white;
+    border-radius: var(--nw-radius-lg);
+    padding: 3.5rem 2.5rem;
+    margin-bottom: 2.5rem;
+    box-shadow: var(--nw-shadow-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #93c5fd;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #ffffff;
+    margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: #cbd5e1;
+    max-width: 680px;
+    margin-bottom: 2rem;
+}
+
+.feature-card {
+    background: #ffffff;
+    border: 1px solid var(--nw-border);
+    border-radius: var(--nw-radius-md);
+    padding: 1.75rem;
+    height: 100%;
+    transition: all 0.25s ease;
+    box-shadow: var(--nw-shadow-sm);
+    display: flex;
+    flex-direction: column;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--nw-shadow-lg);
+    border-color: #cbd5e1;
+}
+
+.feature-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--nw-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.icon-box-blue {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.icon-box-emerald {
+    background-color: #ecfdf5;
+    color: #10b981;
+}
+
+.icon-box-purple {
+    background-color: #faf5ff;
+    color: #9333ea;
+}
+
+.feature-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--nw-dark);
+}
+
+.feature-desc {
+    color: var(--nw-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+    flex-grow: 1;
+}
+
+/* ==========================================================================
+   User Navigation & Login Display
+   ========================================================================== */
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #ffffff;
+    border: 1px solid var(--nw-border);
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    box-shadow: var(--nw-shadow-sm);
+}
+
+.user-avatar-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+}
+
+.btn-nav-auth {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--nw-radius-sm);
+}
+
+/* ==========================================================================
+   Blazor Loading Screen & Error UI
+   ========================================================================== */
+
+#blazor-error-ui {
+    background: #fef2f2;
+    color: #991b1b;
+    border-top: 2px solid var(--nw-danger);
+    bottom: 0;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    display: none;
+    left: 0;
+    padding: 0.85rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+    font-weight: 500;
+}
+
+#blazor-error-ui .reload {
+    color: #991b1b;
+    font-weight: 700;
+    text-decoration: underline;
+    margin-left: 0.5rem;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1.5rem;
+    top: 0.75rem;
+    color: #991b1b;
+}
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 6rem;
+    height: 6rem;
+    margin: 25vh auto 1.5rem auto;
+}
+
+.loading-progress circle {
+    text-align: center;
+    font-weight: bold;
+    fill: none;
+    stroke: #e2e8f0;
+    stroke-width: 0.5rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: var(--nw-primary);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: relative;
+    text-align: center;
+    font-weight: 600;
+    color: var(--nw-text-muted);
+    font-size: 0.95rem;
+}

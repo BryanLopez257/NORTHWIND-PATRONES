@@ -1,0 +1,13 @@
+global using System;
+global using Microsoft.Extensions.DependencyInjection;
+global using NorthWind.Sales.Entities.Dtos.CreateOrder;
+global using NorthWind.Sales.Entities.Dtos.Products;
+global using NorthWind.Sales.Entities.Dtos.Customers;
+global using NorthWind.Sales.Entities.Dtos.Invoices;
+global using NorthWind.Sales.Validators.Entities.CreateOrder;
+global using NorthWind.Sales.Validators.Entities.Products;
+global using NorthWind.Sales.Validators.Entities.Customers;
+global using NorthWind.Sales.Validators.Entities.Invoices;
+global using NorthWind.Sales.Validators.Entities.Resources;
+global using NorthWind.Validation.Entities.Abstractions;
+global using NorthWind.Validation.Entities.Interfaces;

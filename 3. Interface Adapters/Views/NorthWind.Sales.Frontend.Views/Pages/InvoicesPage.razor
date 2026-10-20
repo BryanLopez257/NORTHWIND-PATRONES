@@ -1,0 +1,324 @@
+@page "/invoices"
+@attribute [Authorize]
+@namespace NorthWind.Sales.Frontend.Views.Pages
+
+<PageTitle>Historial de Facturas - NorthWind</PageTitle>
+
+<div class="container-fluid py-4 px-md-4">
+    <!-- Encabezado Principal -->
+    <div class="card border-0 shadow-sm mb-4 bg-primary text-white rounded-3 overflow-hidden">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-white bg-opacity-25 rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 58px; height: 58px;">
+                        <i class="bi bi-journal-check fs-2 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="h4 mb-1 fw-bold">Historial de Facturas Emitidas</h2>
+                        <p class="mb-0 text-white-50 small">
+                            Auditoría de comprobantes fiscales con Patrón Instantánea (Snapshot), IVA 15% y trazabilidad inmutable.
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-white text-primary px-3 py-2 fs-6 shadow-sm">
+                        <i class="bi bi-receipt-cutoff me-1"></i>
+                        @ViewModel.Invoices.Count facturas emitidas
+                    </span>
+                    <button class="btn btn-outline-light btn-sm fw-semibold d-flex align-items-center gap-1"
+                            @onclick="ViewModel.LoadInvoicesAsync" title="Actualizar lista">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        <span>Actualizar</span>
+                    </button>
+                    <a href="/createorder" class="btn btn-light btn-sm fw-semibold shadow-sm d-flex align-items-center gap-1">
+                        <i class="bi bi-cart-plus-fill text-primary"></i>
+                        <span>Crear Orden</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes de Estado -->
+    @if (!string.IsNullOrEmpty(ViewModel.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+            <div>@ViewModel.SuccessMessage</div>
+            <button type="button" class="btn-close" @onclick="() => ViewModel.SuccessMessage = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
+            <div>@ViewModel.ErrorMessage</div>
+            <button type="button" class="btn-close" @onclick="() => ViewModel.ErrorMessage = null"></button>
+        </div>
+    }
+
+    <!-- Panel de Búsqueda y Filtros con Selector de Tipo -->
+    <div class="card border shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-light py-3 border-bottom">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-9 col-md-8">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white text-secondary fw-semibold">
+                            <i class="bi bi-funnel-fill me-1 text-primary"></i> Buscar por:
+                        </span>
+                        <select class="form-select flex-grow-0" style="width: 200px;"
+                                value="@ViewModel.SearchType" @onchange="ViewModel.OnSearchTypeChanged">
+                            <option value="all">🔍 Todos</option>
+                            <option value="invoice">🧾 N° Factura / Código</option>
+                            <option value="customer_name">👤 Nombre de Cliente</option>
+                            <option value="customer_id">🏷️ Código de Cliente</option>
+                        </select>
+                        <input type="text" class="form-control" placeholder="@ViewModel.GetSearchPlaceholder()"
+                               value="@ViewModel.SearchTerm" @oninput="ViewModel.OnSearchInput" />
+                        @if (!string.IsNullOrEmpty(ViewModel.SearchTerm))
+                        {
+                            <button class="btn btn-outline-secondary" type="button" title="Limpiar búsqueda" @onclick="ViewModel.ClearSearch">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-4 d-flex gap-2">
+                    <button type="button" class="btn btn-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1 shadow-sm" @onclick="ViewModel.ApplySearch">
+                        <i class="bi bi-search"></i>
+                        <span>Buscar</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-1" @onclick="ViewModel.ResetSearch">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        <span>Limpiar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla del Historial de Facturas -->
+        <div class="card-body p-0">
+            @if (ViewModel.IsLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando facturas registradas...</p>
+                </div>
+            }
+            else if (ViewModel.Invoices.Count == 0)
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-1 text-secondary opacity-50 d-block mb-2"></i>
+                    <p class="mb-1 fw-semibold">No se encontraron facturas emitidas.</p>
+                    <p class="small text-muted mb-3">Las facturas se generan automáticamente al registrar una orden de venta.</p>
+                    <a href="/createorder" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-cart-plus me-1"></i> Ir a Crear Orden
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th>N° Factura</th>
+                                <th>Fecha de Emisión</th>
+                                <th>Cliente (Snapshot)</th>
+                                <th>Vendedor</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-end">IVA (15%)</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-center">Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in ViewModel.Invoices)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary font-monospace fs-6 px-2 py-1">
+                                            @inv.InvoiceNumber
+                                        </span>
+                                    </td>
+                                    <td class="text-secondary small">
+                                        <i class="bi bi-calendar3 me-1"></i>
+                                        @inv.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">@inv.CustomerFullName</div>
+                                        <div class="small text-muted font-monospace">
+                                            @if (!string.IsNullOrEmpty(inv.CustomerDocument))
+                                            {
+                                                <span class="badge bg-light text-dark border me-1"><i class="bi bi-card-text me-1"></i>@inv.CustomerDocument</span>
+                                            }
+                                            <span>Código: @inv.CustomerId</span>
+                                        </div>
+                                    </td>
+                                    <td class="small text-muted">
+                                        <i class="bi bi-person me-1"></i>@inv.SellerName
+                                    </td>
+                                    <td class="text-end font-monospace">$@inv.SubTotal.ToString("N2")</td>
+                                    <td class="text-end font-monospace text-secondary">$@inv.Tax.ToString("N2")</td>
+                                    <td class="text-end font-monospace fw-bold text-success fs-6">
+                                        $@inv.Total.ToString("N2")
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 mx-auto"
+                                                @onclick="() => ViewModel.OpenVoucher(inv)">
+                                            <i class="bi bi-eye"></i>
+                                            <span>Ver Factura</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- MODAL COMPROBANTE DE FACTURA (VOUCHER LEGAL AUDITABLE) -->
+@if (ViewModel.ShowVoucherModal && ViewModel.CurrentInvoiceVoucher != null)
+{
+    var voucher = ViewModel.CurrentInvoiceVoucher;
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.65);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow border-0 rounded-4 overflow-hidden">
+                <!-- Header Modal -->
+                <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-receipt-cutoff text-warning fs-4"></i>
+                        <h5 class="modal-title fw-bold mb-0 text-white" style="color: #ffffff !important;">Comprobante de Factura Legal</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @onclick="ViewModel.CloseVoucher"></button>
+                </div>
+
+                <!-- Cuerpo de la Factura (Área imprimible) -->
+                <div class="modal-body p-4 p-md-5 bg-white" id="invoiceVoucherArea">
+                    <div class="border rounded-3 p-4 bg-white shadow-sm">
+                        <!-- Cabecera de la Factura -->
+                        <div class="row align-items-center mb-4 pb-3 border-bottom">
+                            <div class="col-sm-7">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="bi bi-box-seam-fill text-primary fs-3"></i>
+                                    <h3 class="h4 fw-bold text-dark mb-0">NorthWind Sales S.A.</h3>
+                                </div>
+                                <p class="text-muted small mb-0">Sistema de Punto de Venta & Facturación Electrónica</p>
+                                <p class="text-muted small mb-0">RUC: 1790012345001 | Quito, Ecuador</p>
+                            </div>
+                            <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
+                                <div class="badge bg-primary text-wrap p-2 fs-6 mb-1 font-monospace">
+                                    @voucher.InvoiceNumber
+                                </div>
+                                <div class="small text-muted">
+                                    <strong>Fecha:</strong> @voucher.CreatedDate.ToString("dd/MM/yyyy HH:mm:ss")
+                                </div>
+                                <div class="small text-muted">
+                                    <strong>Vendedor:</strong> @voucher.SellerName
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Datos del Cliente (Snapshot Inmutable) -->
+                        <div class="row g-3 mb-4 p-3 bg-light rounded-3">
+                            <div class="col-md-6">
+                                <div class="text-muted small text-uppercase fw-bold">Adquirente / Cliente:</div>
+                                <div class="fw-bold fs-6 text-dark">@voucher.CustomerFullName</div>
+                                <div class="small text-muted">Cédula / RUC: <span class="font-monospace fw-bold text-dark">@voucher.CustomerDocument</span></div>
+                                <div class="small text-muted">Código Interno: <span class="font-monospace">@voucher.CustomerId</span></div>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                @if (!string.IsNullOrEmpty(voucher.CustomerAddress))
+                                {
+                                    <div class="small text-muted"><strong>Dirección:</strong> @voucher.CustomerAddress</div>
+                                }
+                                @if (!string.IsNullOrEmpty(voucher.CustomerPhone))
+                                {
+                                    <div class="small text-muted"><strong>Teléfono:</strong> @voucher.CustomerPhone</div>
+                                }
+                                @if (!string.IsNullOrEmpty(voucher.CustomerEmail))
+                                {
+                                    <div class="small text-muted"><strong>Email:</strong> @voucher.CustomerEmail</div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Detalle de Productos (Snapshot) -->
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered align-middle mb-0">
+                                <thead class="table-light small text-uppercase text-muted">
+                                    <tr>
+                                        <th style="width: 70px;" class="text-center">Cant.</th>
+                                        <th>Descripción (Congelada)</th>
+                                        <th style="width: 120px;" class="text-end">Precio Unit.</th>
+                                        <th style="width: 130px;" class="text-end">Importe</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var d in voucher.Details)
+                                    {
+                                        <tr>
+                                            <td class="text-center fw-bold font-monospace">@d.Quantity</td>
+                                            <td class="fw-semibold">@d.ProductName</td>
+                                            <td class="text-end font-monospace">$@d.UnitPrice.ToString("N2")</td>
+                                            <td class="text-end font-monospace fw-bold text-dark">$@d.SubTotal.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Totales y Resumen -->
+                        <div class="row justify-content-end mb-4">
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-muted fw-semibold">Subtotal Neto:</td>
+                                                <td class="text-end font-monospace fw-bold">$@voucher.SubTotal.ToString("N2")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted fw-semibold">IVA Tarifa 15%:</td>
+                                                <td class="text-end font-monospace fw-bold">$@voucher.Tax.ToString("N2")</td>
+                                            </tr>
+                                            <tr class="border-top">
+                                                <td class="fs-5 fw-bold text-dark pt-2">TOTAL FACTURA:</td>
+                                                <td class="fs-5 fw-bold font-monospace text-success text-end pt-2">
+                                                    $@voucher.Total.ToString("N2")
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nota de Auditoría Legal -->
+                        <div class="alert alert-secondary p-3 mb-0 small text-muted d-flex align-items-center gap-2">
+                            <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                            <div>
+                                <strong>Registro de Integridad Histórica:</strong> Este comprobante utiliza datos congelados en el momento de la emisión. Cualquier modificación futura en los catálogos maestros no alterará el contenido de este documento.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Modal -->
+                <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="ViewModel.CloseVoucher">
+                        Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @onclick="PrintInvoiceAsync">
+                        <i class="bi bi-printer-fill"></i>
+                        <span>Imprimir Comprobante</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

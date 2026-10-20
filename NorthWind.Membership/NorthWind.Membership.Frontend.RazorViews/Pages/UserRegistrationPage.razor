@@ -1,0 +1,12 @@
+@namespace NorthWind.Membership.Frontend.RazorViews.Pages
+@page "/user/register"
+
+<ErrorBoundary @ref="ErrorBoundaryRef">
+    <ChildContent>
+        <UserRegistrationComponent ViewModel="ViewModel" />
+    </ChildContent>
+    <ErrorContent>
+        <ExceptionDisplay Exception="context" />
+        <button class="btn btn-danger" @onclick="Recover">@CommonMessages.OK</button>
+    </ErrorContent>
+</ErrorBoundary>

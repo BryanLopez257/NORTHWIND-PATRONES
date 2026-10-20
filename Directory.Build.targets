@@ -1,0 +1,6 @@
+<Project>
+  <Target Name="EnsureIntermediateOutputPathExists" BeforeTargets="GenerateMSBuildEditorConfigFileCore;GenerateMSBuildEditorConfigFile;PrepareForBuild;BeforeBuild;CoreCompile;GenerateStaticWebAssetsPackFiles;GenerateStaticWebAssetsManifest;GenerateStaticWebAssetEndpointsManifest">
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
+    <MakeDir Directories="$(IntermediateOutputPath)staticwebassets" Condition="!Exists('$(IntermediateOutputPath)staticwebassets')" />
+  </Target>
+</Project>

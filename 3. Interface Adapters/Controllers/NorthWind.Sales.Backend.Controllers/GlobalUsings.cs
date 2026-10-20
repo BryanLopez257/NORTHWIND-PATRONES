@@ -1,0 +1,17 @@
+global using System.Collections.Generic;
+global using System.Threading.Tasks;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Http;
+global using NorthWind.Sales.Backend.BusinessObjects.Interfaces.CreateOrder;
+global using NorthWind.Sales.Backend.BusinessObjects.Interfaces.Products;
+global using NorthWind.Sales.Backend.BusinessObjects.Interfaces.Customers;
+global using NorthWind.Sales.Backend.BusinessObjects.Interfaces.Invoices;
+global using NorthWind.Sales.Backend.Presenters.CreateOrder;
+global using NorthWind.Sales.Backend.Presenters.Products;
+global using NorthWind.Sales.Backend.Presenters.Customers;
+global using NorthWind.Sales.Backend.Presenters.Invoices;
+global using NorthWind.Sales.Entities.Dtos.CreateOrder;
+global using NorthWind.Sales.Entities.Dtos.Products;
+global using NorthWind.Sales.Entities.Dtos.Customers;
+global using NorthWind.Sales.Entities.Dtos.Invoices;
+global using NorthWind.Sales.Entities.ValueObjects;

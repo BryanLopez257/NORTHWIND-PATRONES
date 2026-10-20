@@ -1,0 +1,50 @@
+@namespace NorthWind.Sales.BlazorClient
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="[typeof(NorthWind.Sales.Frontend.Views.Pages.CreateOrder).Assembly, typeof(NorthWind.Membership.Frontend.RazorViews.Pages.UserLoginPage).Assembly]">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(NorthWind.Sales.Frontend.Views.Layout.MainLayout)">
+                <NotAuthorized>
+                    <div class="auth-wrapper">
+                        <div class="auth-card text-center p-4">
+                            <div class="auth-icon-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 8px 16px -4px rgba(245, 158, 11, 0.35);">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </div>
+                            <h3 class="auth-title mb-2">Acceso Restringido</h3>
+                            <p class="auth-subtitle mb-4">Esta sección requiere que estés autenticado en el sistema.</p>
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="user/login" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                    Iniciar Sesión
+                                </a>
+                                <a href="user/register" class="btn btn-secondary">
+                                    <i class="bi bi-person-plus"></i>
+                                    Crear Cuenta
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Página no encontrada</PageTitle>
+            <LayoutView Layout="@typeof(NorthWind.Sales.Frontend.Views.Layout.MainLayout)">
+                <div class="auth-wrapper">
+                    <div class="auth-card text-center p-4">
+                        <div class="auth-icon-badge" style="background: linear-gradient(135deg, #64748b 0%, #334155 100%);">
+                            <i class="bi bi-question-circle-fill"></i>
+                        </div>
+                        <h3 class="auth-title mb-2">Página no encontrada</h3>
+                        <p class="auth-subtitle mb-4">La dirección a la que intentas acceder no existe en la aplicación.</p>
+                        <a href="" class="btn btn-primary">
+                            <i class="bi bi-house-door-fill"></i>
+                            Volver al Inicio
+                        </a>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

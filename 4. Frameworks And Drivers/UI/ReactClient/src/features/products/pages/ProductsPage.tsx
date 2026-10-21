@@ -368,8 +368,8 @@ export const ProductsPage: React.FC = () => {
           )}
 
           <p className="text-sm text-slate-600">
-            ¿Está seguro de que desea eliminar el producto{' '}
-            <strong className="text-slate-900">{productToDelete?.name}</strong> (ID: #{productToDelete?.id})?
+            ¿Está seguro de eliminar el producto{' '}
+            <strong className="text-slate-900">{productToDelete?.name}</strong>?
           </p>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
@@ -390,7 +390,7 @@ export const ProductsPage: React.FC = () => {
               onClick={handleConfirmDelete}
               isLoading={deleteProductMutation.isPending}
             >
-              Confirmar Eliminación
+              Eliminar Producto
             </Button>
           </div>
         </div>

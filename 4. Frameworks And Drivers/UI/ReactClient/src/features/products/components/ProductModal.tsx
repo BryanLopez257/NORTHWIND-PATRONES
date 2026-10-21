@@ -32,6 +32,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -131,7 +132,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           placeholder="Chai, Chang, Queso Cabrales..."
           maxLength={40}
           error={errors.name?.message}
-          {...register('name')}
+          {...register('name', {
+            onChange: (e) => {
+              if (e.target.value.length > 40) {
+                const clean = e.target.value.slice(0, 40);
+                e.target.value = clean;
+                setValue('name', clean, { shouldValidate: true });
+              }
+            },
+          })}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

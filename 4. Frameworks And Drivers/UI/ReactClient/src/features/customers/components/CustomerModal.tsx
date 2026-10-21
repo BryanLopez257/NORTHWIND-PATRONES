@@ -5,6 +5,12 @@ import { Dialog } from '@/shared/ui/Dialog';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
+import {
+  allowOnlyAlpha,
+  allowOnlyLettersAndSpaces,
+  sanitizeAlpha,
+  sanitizeLettersAndSpaces,
+} from '@/core/utils/inputFilters';
 import { CustomerDto } from '../types';
 import { customerSchema, CustomerFormData } from '../schemas';
 import { useCreateCustomer, useUpdateCustomer } from '../hooks/useCustomers';
@@ -137,9 +143,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             disabled={isEditing}
             maxLength={5}
             error={errors.id?.message}
+            onKeyDown={allowOnlyAlpha}
+            className="font-mono uppercase tracking-wider"
             {...register('id', {
               onChange: (e) => {
-                setValue('id', e.target.value.toUpperCase());
+                const clean = sanitizeAlpha(e.target.value).slice(0, 5);
+                e.target.value = clean;
+                setValue('id', clean, { shouldValidate: true });
               },
             })}
           />
@@ -152,8 +162,16 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           id="customer-name"
           label="Nombre o Razón Social *"
           placeholder="Alfreds Futterkiste"
+          maxLength={40}
           error={errors.name?.message}
-          {...register('name')}
+          onKeyDown={allowOnlyLettersAndSpaces}
+          {...register('name', {
+            onChange: (e) => {
+              const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 40);
+              e.target.value = clean;
+              setValue('name', clean, { shouldValidate: true });
+            },
+          })}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

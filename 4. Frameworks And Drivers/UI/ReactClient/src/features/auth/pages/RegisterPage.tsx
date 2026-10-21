@@ -7,6 +7,7 @@ import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { allowOnlyLettersAndSpaces, sanitizeLettersAndSpaces } from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { registerSchema, RegisterFormData } from '../schemas';
 
@@ -19,6 +20,7 @@ export const RegisterPage: React.FC = () => {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -111,16 +113,32 @@ export const RegisterPage: React.FC = () => {
                 id="reg-first-name"
                 label="Primer Nombre *"
                 placeholder="Juan"
+                maxLength={50}
                 error={errors.firstName?.message}
-                {...register('firstName')}
+                onKeyDown={allowOnlyLettersAndSpaces}
+                {...register('firstName', {
+                  onChange: (e) => {
+                    const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                    e.target.value = clean;
+                    setValue('firstName', clean, { shouldValidate: true });
+                  },
+                })}
               />
 
               <Input
                 id="reg-second-name"
                 label="Segundo Nombre"
                 placeholder="Carlos (opcional)"
+                maxLength={50}
                 error={errors.secondName?.message}
-                {...register('secondName')}
+                onKeyDown={allowOnlyLettersAndSpaces}
+                {...register('secondName', {
+                  onChange: (e) => {
+                    const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                    e.target.value = clean;
+                    setValue('secondName', clean, { shouldValidate: true });
+                  },
+                })}
               />
             </div>
 
@@ -130,16 +148,32 @@ export const RegisterPage: React.FC = () => {
                 id="reg-last-name"
                 label="Primer Apellido *"
                 placeholder="Pérez"
+                maxLength={50}
                 error={errors.lastName?.message}
-                {...register('lastName')}
+                onKeyDown={allowOnlyLettersAndSpaces}
+                {...register('lastName', {
+                  onChange: (e) => {
+                    const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                    e.target.value = clean;
+                    setValue('lastName', clean, { shouldValidate: true });
+                  },
+                })}
               />
 
               <Input
                 id="reg-second-last-name"
                 label="Segundo Apellido"
                 placeholder="Gómez (opcional)"
+                maxLength={50}
                 error={errors.secondLastName?.message}
-                {...register('secondLastName')}
+                onKeyDown={allowOnlyLettersAndSpaces}
+                {...register('secondLastName', {
+                  onChange: (e) => {
+                    const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                    e.target.value = clean;
+                    setValue('secondLastName', clean, { shouldValidate: true });
+                  },
+                })}
               />
             </div>
 
@@ -149,6 +183,7 @@ export const RegisterPage: React.FC = () => {
               label="Correo Electrónico Corporativo *"
               type="email"
               placeholder="juan.perez@northwind.com"
+              maxLength={100}
               error={errors.email?.message}
               {...register('email')}
             />
@@ -160,6 +195,7 @@ export const RegisterPage: React.FC = () => {
                 label="Contraseña *"
                 type="password"
                 placeholder="Mínimo 6 caracteres"
+                maxLength={100}
                 error={errors.password?.message}
                 {...register('password')}
               />
@@ -169,6 +205,7 @@ export const RegisterPage: React.FC = () => {
                 label="Confirmar Contraseña *"
                 type="password"
                 placeholder="Repita su contraseña"
+                maxLength={100}
                 error={errors.confirmPassword?.message}
                 {...register('confirmPassword')}
               />

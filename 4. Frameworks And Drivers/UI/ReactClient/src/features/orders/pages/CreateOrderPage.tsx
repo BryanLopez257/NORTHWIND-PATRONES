@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   MapPin,
   RefreshCw,
+  Users,
 } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
@@ -20,6 +21,7 @@ import { ProductDto } from '@/features/products/types';
 import { useCreateOrder } from '../hooks/useCreateOrder';
 import { CartItem, CreateOrderDto } from '../types';
 import { ProductSelectorModal } from '../components/ProductSelectorModal';
+import { CustomerSelectorModal } from '../components/CustomerSelectorModal';
 import { InvoiceVoucher } from '@/features/invoices/components/InvoiceVoucher';
 import { InvoiceResponseDto } from '@/features/invoices/types';
 import { validateEcuadorianId, validateRuc } from '@/core/validators/ecuadorianIdValidator';
@@ -30,6 +32,16 @@ import { Badge } from '@/shared/ui/Badge';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
 import { getErrorMessage } from '@/core/api/apiClient';
+import {
+  allowOnlyLettersAndSpaces,
+  allowOnlyAlpha,
+  allowOnlyDigits,
+  allowAddressChars,
+  sanitizeLettersAndSpaces,
+  sanitizeAlpha,
+  sanitizeDigits,
+  sanitizeAddress,
+} from '@/core/utils/inputFilters';
 
 export const CreateOrderPage: React.FC = () => {
   // Query customers
@@ -38,6 +50,7 @@ export const CreateOrderPage: React.FC = () => {
 
   // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
   const [customerDocument, setCustomerDocument] = useState<string>('');
   const [shipAddress, setShipAddress] = useState<string>('');
   const [shipCity, setShipCity] = useState<string>('Quito');
@@ -57,7 +70,8 @@ export const CreateOrderPage: React.FC = () => {
 
   // Selected customer object
   const selectedCustomer: CustomerDto | undefined = useMemo(() => {
-    return customers.find((c) => c.id === selectedCustomerId);
+    if (!selectedCustomerId) return undefined;
+    return customers.find((c) => c.id.toUpperCase() === selectedCustomerId.toUpperCase());
   }, [customers, selectedCustomerId]);
 
   // Credit policy validation
@@ -119,14 +133,27 @@ export const CreateOrderPage: React.FC = () => {
 
   // Handler for customer selection
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
+    const id = e.target.value.toUpperCase();
     setSelectedCustomerId(id);
     setFormError(null);
   };
 
-  // Sanitized document change (digits only)
+  // Handler for customer ID input (letters only, uppercase forced, max 5)
+  const handleCustomerIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const alphaOnly = sanitizeAlpha(e.target.value).slice(0, 5).toUpperCase();
+    setSelectedCustomerId(alphaOnly);
+    setFormError(null);
+  };
+
+  // Handler for selecting customer from CustomerSelectorModal
+  const handleSelectCustomer = (customer: CustomerDto) => {
+    setSelectedCustomerId(customer.id.toUpperCase());
+    setFormError(null);
+  };
+
+  // Sanitized document change (digits only, max 13)
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 13);
+    const digitsOnly = sanitizeDigits(e.target.value).slice(0, 13);
     setCustomerDocument(digitsOnly);
     setFormError(null);
   };
@@ -193,7 +220,12 @@ export const CreateOrderPage: React.FC = () => {
     setFormError(null);
 
     if (!selectedCustomerId) {
-      setFormError('Por favor seleccione un cliente de la lista.');
+      setFormError('Por favor seleccione o ingrese un cliente de la lista.');
+      return;
+    }
+
+    if (!selectedCustomer) {
+      setFormError(`El cliente con ID "${selectedCustomerId}" no existe en la lista de clientes registrados.`);
       return;
     }
 
@@ -369,18 +401,46 @@ export const CreateOrderPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Customer Selector */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Customer ID input (ALFKI) */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Cliente <span className="text-rose-500">*</span>
+                  ID Cliente <span className="text-rose-500">*</span> (5 letras)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="customerId"
+                    type="text"
+                    placeholder="Ej. ALFKI"
+                    value={selectedCustomerId}
+                    onChange={handleCustomerIdChange}
+                    onKeyDown={allowOnlyAlpha}
+                    maxLength={5}
+                    className="font-mono uppercase tracking-wider"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCustomerModal(true)}
+                    className="whitespace-nowrap flex items-center shrink-0 border-slate-300 hover:bg-slate-50"
+                  >
+                    <Users className="w-4 h-4 mr-1.5 text-sky-600" />
+                    Buscar Cliente
+                  </Button>
+                </div>
+              </div>
+
+              {/* Customer Selector Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                  Seleccionar Cliente <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={selectedCustomerId}
                   onChange={handleCustomerChange}
                   disabled={isLoadingCustomers}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
-                  required
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 h-10"
                 >
                   <option value="">-- Seleccione un cliente --</option>
                   {customers.map((c) => (
@@ -400,10 +460,12 @@ export const CreateOrderPage: React.FC = () => {
                   Cédula / RUC (Ecuador) <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="customerDocument"
                   type="text"
                   placeholder="Ej. 1790012345001 o 1710000000"
                   value={customerDocument}
                   onChange={handleDocumentChange}
+                  onKeyDown={allowOnlyDigits}
                   maxLength={13}
                   className={`font-mono ${
                     customerDocument
@@ -482,10 +544,12 @@ export const CreateOrderPage: React.FC = () => {
                   Dirección de Entrega <span className="text-rose-500">*</span> (máx 60 caracteres)
                 </label>
                 <Input
+                  id="shipAddress"
                   type="text"
                   placeholder="Ej. Av. 10 de Agosto N24-123 y Colón"
                   value={shipAddress}
-                  onChange={(e) => setShipAddress(e.target.value.slice(0, 60))}
+                  onChange={(e) => setShipAddress(sanitizeAddress(e.target.value).slice(0, 60))}
+                  onKeyDown={allowAddressChars}
                   maxLength={60}
                   required
                 />
@@ -499,10 +563,12 @@ export const CreateOrderPage: React.FC = () => {
                   Ciudad <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="shipCity"
                   type="text"
                   placeholder="Ej. Quito"
                   value={shipCity}
-                  onChange={(e) => setShipCity(e.target.value.slice(0, 15))}
+                  onChange={(e) => setShipCity(sanitizeLettersAndSpaces(e.target.value).slice(0, 15))}
+                  onKeyDown={allowOnlyLettersAndSpaces}
                   maxLength={15}
                   required
                 />
@@ -513,10 +579,12 @@ export const CreateOrderPage: React.FC = () => {
                   País <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="shipCountry"
                   type="text"
                   placeholder="Ecuador"
                   value={shipCountry}
-                  onChange={(e) => setShipCountry(e.target.value.slice(0, 15))}
+                  onChange={(e) => setShipCountry(sanitizeLettersAndSpaces(e.target.value).slice(0, 15))}
+                  onKeyDown={allowOnlyLettersAndSpaces}
                   maxLength={15}
                   required
                 />
@@ -527,10 +595,12 @@ export const CreateOrderPage: React.FC = () => {
                   Código Postal
                 </label>
                 <Input
+                  id="shipPostalCode"
                   type="text"
                   placeholder="Ej. 170150"
                   value={shipPostalCode}
-                  onChange={(e) => setShipPostalCode(e.target.value.slice(0, 10))}
+                  onChange={(e) => setShipPostalCode(sanitizeDigits(e.target.value).slice(0, 10))}
+                  onKeyDown={allowOnlyDigits}
                   maxLength={10}
                 />
               </div>
@@ -693,6 +763,14 @@ export const CreateOrderPage: React.FC = () => {
         onOpenChange={setIsCatalogOpen}
         selectedProductIds={cartItems.map((item) => item.productId)}
         onSelectProduct={handleAddProduct}
+      />
+
+      {/* Customer Selection Modal */}
+      <CustomerSelectorModal
+        open={showCustomerModal}
+        onOpenChange={setShowCustomerModal}
+        onSelectCustomer={handleSelectCustomer}
+        selectedCustomerId={selectedCustomerId}
       />
 
       {/* Post-Issuance Official Invoice Voucher Modal */}

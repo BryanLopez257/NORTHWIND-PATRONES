@@ -348,9 +348,9 @@ export const CustomersPage: React.FC = () => {
           )}
 
           <p className="text-sm text-slate-600">
-            ¿Está seguro de que desea eliminar al cliente{' '}
-            <strong className="text-slate-900">{customerToDelete?.name}</strong> (ID:{' '}
-            <span className="font-mono text-sky-700">{customerToDelete?.id}</span>)?
+            ¿Está seguro de eliminar al cliente{' '}
+            <strong className="text-slate-900">{customerToDelete?.name}</strong> con ID{' '}
+            <span className="font-mono text-sky-700 font-semibold">{customerToDelete?.id}</span>? Esta acción no se puede deshacer.
           </p>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
@@ -371,7 +371,7 @@ export const CustomersPage: React.FC = () => {
               onClick={handleConfirmDelete}
               isLoading={deleteCustomerMutation.isPending}
             >
-              Confirmar Eliminación
+              Eliminar Cliente
             </Button>
           </div>
         </div>

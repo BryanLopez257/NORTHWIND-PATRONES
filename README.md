@@ -138,3 +138,4 @@ El sistema cuenta con autenticación basada en **JWT** y **ASP.NET Core Identity
 ## 👥 Contribuciones y Equipo
 * Proyecto presentado con calificación de **9**.
 * Mantén el estándar de Clean Architecture y respeto de puertos/adaptadores en cada nuevo cambio.
+# NORTHWIND-PATRONES

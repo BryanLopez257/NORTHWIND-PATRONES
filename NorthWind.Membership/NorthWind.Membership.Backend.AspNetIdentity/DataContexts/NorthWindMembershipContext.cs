@@ -15,6 +15,8 @@ public class NorthWindMembershipContext : IdentityDbContext<NorthWindUser>
         {
             optionsBuilder.UseSqlServer(dbOptions.Value.ConnectionString);
         }
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         base.OnConfiguring(optionsBuilder);
     }
 }

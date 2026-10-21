@@ -11,5 +11,7 @@ internal class NorthWindDomainLogsContext(IOptions<DBOptions> dbOptions) : DbCon
             Enlist = false
         };
         optionsBuilder.UseSqlServer(builder.ConnectionString);
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
     }
 }

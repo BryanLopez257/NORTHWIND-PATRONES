@@ -4,9 +4,14 @@ internal class NorthWindSalesContextFactory : IDesignTimeDbContextFactory<NorthW
 {
     public NorthWindSalesContext CreateDbContext(string[] args)
     {
+        DotEnvLoader.Load();
+
+        string connectionString = Environment.GetEnvironmentVariable("DBOptions__ConnectionString")
+            ?? @"Server=localhost,1433;Database=NorthWindDB;User Id=sa;Password=YourPasswordHere!;TrustServerCertificate=True;";
+
         var options = Microsoft.Extensions.Options.Options.Create(new DBOptions
         {
-            ConnectionString = @"Server=127.0.0.1,1433;Database=NorthWindDB;User Id=sa;Password=1234;TrustServerCertificate=True;Encrypt=True;"
+            ConnectionString = connectionString
         });
         return new NorthWindSalesContext(options);
     }

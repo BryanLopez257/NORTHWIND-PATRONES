@@ -17,7 +17,7 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -29,6 +29,10 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CustomerDocument")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("CustomerId")
                         .IsRequired()
@@ -83,6 +87,13 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
                         .HasPrecision(8, 2)
                         .HasColumnType("decimal(8,2)");
 
+                    b.Property<string>("CustomerType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Empresa");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -97,18 +108,21 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
                         {
                             Id = "ALFKI",
                             CurrentBalance = 0m,
+                            CustomerType = "Empresa",
                             Name = "Alfreds Futterkiste"
                         },
                         new
                         {
                             Id = "ANATR",
                             CurrentBalance = 0m,
+                            CustomerType = "Empresa",
                             Name = "Ana Trujillo Emparedados y helados"
                         },
                         new
                         {
                             Id = "ANTON",
                             CurrentBalance = 100m,
+                            CustomerType = "Empresa",
                             Name = "Antonio Moreno Taquería"
                         });
                 });

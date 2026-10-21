@@ -4,10 +4,16 @@ internal class NorthWindMembershipContextFactory : IDesignTimeDbContextFactory<N
 {
     public NorthWindMembershipContext CreateDbContext(string[] args)
     {
+        DotEnvLoader.Load();
+
+        string connectionString = Environment.GetEnvironmentVariable("MembershipDBOptions__ConnectionString")
+            ?? Environment.GetEnvironmentVariable("MembershipDB__ConnectionString")
+            ?? @"Server=localhost,1433;Database=NorthWindUsersDB;User Id=sa;Password=YourPasswordHere!;TrustServerCertificate=True;";
+
         IOptions<MembershipDBOptions> DbOptions =
             Microsoft.Extensions.Options.Options.Create(new MembershipDBOptions
             {
-                ConnectionString = "Server=127.0.0.1,1433;Database=NorthWindUsersDB;User Id=sa;Password=1234;TrustServerCertificate=True;Encrypt=True;"
+                ConnectionString = connectionString
             });
         return new NorthWindMembershipContext(DbOptions);
     }

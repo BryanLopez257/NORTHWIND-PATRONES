@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * ARCHIVO: src/core/api/apiClient.ts
+ * PROPÓSITO: Cliente HTTP Centralizado con Axios (Patrón Gateway & Interceptor).
+ * ============================================================================
+ * Responsabilidades:
+ * 1. Base URL dinámica: Lee `VITE_API_URL` del archivo `.env` o por defecto `http://localhost:5000`.
+ * 2. Request Interceptor: Inyecta automáticamente el token JWT Bearer en el encabezado `Authorization`.
+ * 3. Response Interceptor: 
+ *    - Manejo global de 401 Unauthorized: Cierra la sesión en Pinia y redirige a /login.
+ *    - Mapeo estandarizado de RFC 7807 (ProblemDetails / ValidationProblemDetails) de ASP.NET Core
+ *      a la clase personalizada `ApiError`, extrayendo errores generales y errores por campo (`fieldErrors`).
+ */
+
 import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../auth/useAuthStore';
 
@@ -26,6 +40,10 @@ export interface ProblemDetails {
   [key: string]: unknown;
 }
 
+/**
+ * Excepción de dominio para errores provenientes de la API REST.
+ * Contiene el status HTTP, el cuerpo del error y los mensajes divididos por campo.
+ */
 export class ApiError extends Error {
   public status?: number;
   public problemDetails?: ProblemDetails;
@@ -45,6 +63,9 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Parsea respuestas de error estándar de ASP.NET Core (ProblemDetails).
+ */
 export function parseProblemDetails(data: ProblemDetails | undefined): {
   message: string;
   fieldErrors: Record<string, string>;
@@ -56,7 +77,7 @@ export function parseProblemDetails(data: ProblemDetails | undefined): {
     return { message: 'Error de comunicación con el servidor', fieldErrors };
   }
 
-  // 1. Process "errors" property
+  // 1. Procesar propiedad "errors" (FluentValidation o ValidationProblemDetails)
   if (Array.isArray(data.errors)) {
     for (const item of data.errors) {
       const prop = item.propertyName || item.PropertyName || '';
@@ -83,7 +104,7 @@ export function parseProblemDetails(data: ProblemDetails | undefined): {
     }
   }
 
-  // 2. Process "invalidParams" property
+  // 2. Procesar propiedad "invalidParams"
   if (Array.isArray(data.invalidParams)) {
     for (const item of data.invalidParams) {
       const prop = item.propertyName || item.name || '';
@@ -99,7 +120,7 @@ export function parseProblemDetails(data: ProblemDetails | undefined): {
     }
   }
 
-  // 3. Determine final message
+  // 3. Determinar mensaje final a mostrar
   let finalMessage = '';
   if (messages.length > 0) {
     finalMessage = Array.from(new Set(messages)).join('\n');
@@ -118,6 +139,9 @@ export function parseProblemDetails(data: ProblemDetails | undefined): {
   return { message: finalMessage, fieldErrors };
 }
 
+/**
+ * Función auxiliar para obtener un texto legible a partir de cualquier excepción.
+ */
 export function getErrorMessage(error: unknown, defaultMessage = 'Ha ocurrido un error inesperado'): string {
   if (error instanceof ApiError) {
     return error.message || defaultMessage;
@@ -131,6 +155,7 @@ export function getErrorMessage(error: unknown, defaultMessage = 'Ha ocurrido un
   return defaultMessage;
 }
 
+// Instancia configurada de Axios
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
   headers: {
@@ -138,7 +163,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor: Inject Bearer token from localStorage
+// Interceptor de Solicitud: Inyecta el token Bearer desde localStorage
 apiClient.interceptors.request.use(
   (config) => {
     const rawTokens = localStorage.getItem('tokens');
@@ -158,10 +183,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: Map ProblemDetails & handle 401
+// Interceptor de Respuesta: Control de expiración (401) y extracción de ProblemDetails
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ProblemDetails>) => {
+    // Si la sesión expiró o no está autorizado
     if (error.response?.status === 401) {
       try {
         const authStore = useAuthStore();

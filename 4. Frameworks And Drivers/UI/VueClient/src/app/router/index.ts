@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * ARCHIVO: src/app/router/index.ts
+ * PROPÓSITO: Configuración de Rutas y Guardias de Navegación (Clean Architecture).
+ * ============================================================================
+ * Implementa:
+ * 1. Rutas Públicas: /login, /register (accesibles sin token).
+ * 2. Rutas Protegidas: /createorder, /invoices, /customers, /products (dentro de MainLayout).
+ * 3. Redirecciones de Compatibilidad con Blazor: /user/login, /user/register, /user/logout.
+ * 4. Guardia Global (beforeEach): Equivalente exacto a ProtectedRoute de React.
+ *    - Si no está autenticado e intenta entrar a una ruta protegida -> redirige a /login guardando la ruta intentada.
+ *    - Si ya está autenticado e intenta ir a /login -> redirige automáticamente a /createorder.
+ */
+
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 import MainLayout from '@/shared/layouts/MainLayout.vue';
@@ -9,7 +23,7 @@ import CustomersPage from '@/features/customers/pages/CustomersPage.vue';
 import ProductsPage from '@/features/products/pages/ProductsPage.vue';
 
 const routes: RouteRecordRaw[] = [
-  // Public routes
+  // --- Rutas Públicas (Autenticación) ---
   {
     path: '/login',
     name: 'Login',
@@ -23,7 +37,7 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
 
-  // Aliases / Compatibility redirects con Blazor
+  // --- Rutas de Compatibilidad Histórica (Vistas heredadas de Blazor) ---
   {
     path: '/user/login',
     redirect: '/login',
@@ -34,7 +48,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/user/logout',
-    redirect: (to) => {
+    redirect: () => {
       try {
         const authStore = useAuthStore();
         authStore.logout();
@@ -45,7 +59,7 @@ const routes: RouteRecordRaw[] = [
     },
   },
 
-  // Protected routes within MainLayout
+  // --- Rutas Protegidas (Envueltas en el diseño principal MainLayout) ---
   {
     path: '/',
     component: MainLayout,
@@ -78,7 +92,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
-  // Fallback route
+  // --- Ruta de Captura / Fallback 404 ---
   {
     path: '/:pathMatch(.*)*',
     redirect: '/createorder',
@@ -90,21 +104,29 @@ export const router = createRouter({
   routes,
 });
 
-// Navigation Guards: Equivalent to ProtectedRoute.tsx
+/**
+ * Guardia de navegación global (Navigation Guard):
+ * Evalúa en cada cambio de ruta el estado de autenticación en Pinia.
+ */
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
 
   const isPublic = to.meta.public === true;
   const isAuthenticated = authStore.isAuthenticated;
 
+  // Caso 1: Ruta privada sin autenticación -> Ir a Login
   if (!isPublic && !isAuthenticated) {
     next({
       path: '/login',
       query: { from: to.fullPath },
     });
-  } else if (isPublic && isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+  } 
+  // Caso 2: Ya autenticado intentando entrar a Login o Register -> Redirigir a módulo principal
+  else if (isPublic && isAuthenticated && (to.path === '/login' || to.path === '/register')) {
     next('/createorder');
-  } else {
+  } 
+  // Caso 3: Acceso permitido
+  else {
     next();
   }
 });

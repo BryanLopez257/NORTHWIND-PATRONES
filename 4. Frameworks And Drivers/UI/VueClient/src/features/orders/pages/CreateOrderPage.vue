@@ -1,4 +1,20 @@
 <script setup lang="ts">
+/**
+ * ============================================================================
+ * VISTA: src/features/orders/pages/CreateOrderPage.vue
+ * PROPÓSITO: Caso de uso principal - Creación y Emisión de Órdenes de Venta.
+ * ============================================================================
+ * Patrones y Buenas Prácticas Aplicadas:
+ * 1. Clean Architecture: La vista solo interactúa con los composables/gateways (`useCreateOrder`, `useCustomers`).
+ * 2. Validación Defensiva (Guards):
+ *    - Validación de crédito: Bloquea clientes con saldo comercial pendiente (> $0.00).
+ *    - Validación tributaria: Algoritmo oficial de Cédula (10 dígitos) y RUC (13 dígitos) para Ecuador.
+ *      Si el cliente es de tipo "Empresa", exige obligatoriamente RUC de 13 dígitos.
+ * 3. Carrito de Compras Reactivo: Control estricto de existencias (stock) por ítem.
+ * 4. Patrón Snapshot (Comprobante Post-Emisión):
+ *    Al emitir la orden con éxito, despliega el modal oficial `InvoiceVoucher` con datos congelados.
+ */
+
 import { ref, computed } from 'vue';
 import {
   ShoppingCart,
@@ -49,11 +65,12 @@ import {
   sanitizeAddress,
 } from '@/core/utils/inputFilters';
 
+// 1. Carga de clientes desde TanStack Query
 const { data: customers } = useCustomers();
 const customerList = computed(() => customers.value ?? []);
 const createOrderMutation = useCreateOrder();
 
-// Form State: inicializados vacíos como en Blazor
+// 2. Estado del Formulario: inicializados vacíos sin valores quemados (hardcodeados)
 const selectedCustomerId = ref<string>('');
 const showCustomerModal = ref<boolean>(false);
 const customerDocument = ref<string>('');
@@ -62,26 +79,26 @@ const shipCity = ref<string>('');
 const shipCountry = ref<string>('');
 const shipPostalCode = ref<string>('');
 
-// Touched state para emular onBlur de Blazor
+// 3. Control de campos tocados (onBlur) para mostrar errores en el momento oportuno
 const touched = ref<Record<string, boolean>>({});
 const markTouched = (field: string) => {
   touched.value[field] = true;
 };
 
-// Cart State
+// 4. Estado del Carrito de Compras
 const cartItems = ref<CartItem[]>([]);
 const isCatalogOpen = ref<boolean>(false);
 const itemToDelete = ref<CartItem | null>(null);
 const showResetConfirm = ref<boolean>(false);
 
-// Success Voucher Modal State
+// 5. Estado del Modal de Comprobante / Factura Emitida
 const voucherModalOpen = ref<boolean>(false);
 const issuedInvoice = ref<InvoiceResponseDto | null>(null);
 
-// Error general
+// Error general de envío
 const formError = ref<string | null>(null);
 
-// Selected customer object
+// 6. Obtener objeto del cliente seleccionado
 const selectedCustomer = computed<CustomerDto | undefined>(() => {
   if (!selectedCustomerId.value) return undefined;
   return customerList.value.find(
@@ -89,10 +106,10 @@ const selectedCustomer = computed<CustomerDto | undefined>(() => {
   );
 });
 
-// Credit policy
+// Regla de Negocio: Condición de Crédito (Saldo pendiente > 0 bloquea la venta)
 const hasPendingBalance = computed(() => (selectedCustomer.value?.currentBalance ?? 0) > 0);
 
-// Document validation with ecuadorianIdValidator
+// Regla de Negocio: Validación de Cédula/RUC con algoritmo oficial de Ecuador
 const documentValidation = computed(() => {
   const cleanDoc = customerDocument.value.trim();
   if (!cleanDoc) {
@@ -106,6 +123,7 @@ const documentValidation = computed(() => {
     };
   }
 
+  // Regla especial para Empresas: obligatorio RUC de 13 dígitos
   if (selectedCustomer.value?.customerType === 'Empresa') {
     if (cleanDoc.length === 10) {
       return {
@@ -131,7 +149,7 @@ const documentValidation = computed(() => {
   };
 });
 
-// Inline field errors
+// Mensajes de error por campo
 const errors = computed(() => {
   const errs: Record<string, string> = {};
 
@@ -170,19 +188,20 @@ const errors = computed(() => {
   return errs;
 });
 
-// Order totals calculation
+// Cálculos económicos de la orden
 const subTotal = computed(() => {
   return cartItems.value.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
 });
 
 const tax = computed(() => {
-  return subTotal.value * 0.15;
+  return subTotal.value * 0.15; // IVA 15% vigente
 });
 
 const total = computed(() => {
   return subTotal.value + tax.value;
 });
 
+// Condición para habilitar el botón de emitir
 const isSubmitDisabled = computed(() => {
   return (
     !selectedCustomerId.value ||
@@ -199,10 +218,9 @@ const isSubmitDisabled = computed(() => {
   );
 });
 
+// Manejadores de interacción
 const handleSelectCustomer = (customer: CustomerDto) => {
-  if (customer.currentBalance > 0) {
-    return;
-  }
+  if (customer.currentBalance > 0) return;
   selectedCustomerId.value = customer.id;
   markTouched('customer');
 };
@@ -264,6 +282,7 @@ const handleResetForm = () => {
   formError.value = null;
 };
 
+// Envío de la orden a la Web API
 const onSubmit = async () => {
   formError.value = null;
 
@@ -309,7 +328,7 @@ const onSubmit = async () => {
 
 <template>
   <div class="space-y-6 max-w-6xl mx-auto pb-12">
-    <!-- Header -->
+    <!-- Encabezado de la Página -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center space-x-2">
@@ -333,7 +352,7 @@ const onSubmit = async () => {
       </Button>
     </div>
 
-    <!-- Error Banner -->
+    <!-- Banner de Error si falla la creación -->
     <div
       v-if="formError"
       class="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-3 shadow-xs"
@@ -343,7 +362,7 @@ const onSubmit = async () => {
     </div>
 
     <form @submit.prevent="onSubmit" class="space-y-6" novalidate>
-      <!-- Step 1: Customer & Shipping Information -->
+      <!-- Paso 1: Datos del Cliente y Facturación -->
       <Card class="border-slate-200 shadow-xs">
         <CardHeader class="pb-3">
           <CardTitle class="text-base flex items-center space-x-2 text-slate-800">
@@ -355,7 +374,7 @@ const onSubmit = async () => {
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Customer Selector -->
+            <!-- Selector de Cliente con Modal -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">
                 Cliente Comercial *
@@ -389,7 +408,7 @@ const onSubmit = async () => {
                 {{ errors.customer }}
               </p>
 
-              <!-- Selected Customer Badge -->
+              <!-- Insignias informativas del cliente seleccionado -->
               <div v-if="selectedCustomer" class="mt-2 flex items-center gap-2">
                 <Badge
                   :variant="selectedCustomer.customerType === 'Empresa' ? 'info' : 'default'"
@@ -407,7 +426,7 @@ const onSubmit = async () => {
               </div>
             </div>
 
-            <!-- Customer Document -->
+            <!-- Identificación Tributaria (Cédula o RUC con validación en tiempo real) -->
             <div>
               <Input
                 id="order-doc"
@@ -429,7 +448,7 @@ const onSubmit = async () => {
             </div>
           </div>
 
-          <!-- Shipping Address -->
+          <!-- Dirección de Entrega -->
           <div class="border-t border-slate-100 pt-4">
             <h4 class="text-xs font-semibold uppercase text-slate-500 mb-3 flex items-center space-x-1">
               <MapPin class="h-3.5 w-3.5 text-sky-600" />
@@ -494,7 +513,7 @@ const onSubmit = async () => {
         </CardContent>
       </Card>
 
-      <!-- Step 2: Order Lines & Cart -->
+      <!-- Paso 2: Líneas de la Orden (Carrito de Compras) -->
       <Card class="border-slate-200 shadow-xs">
         <CardHeader class="pb-3 flex flex-row items-center justify-between">
           <CardTitle class="text-base flex items-center space-x-2 text-slate-800">
@@ -591,7 +610,7 @@ const onSubmit = async () => {
         </CardContent>
       </Card>
 
-      <!-- Step 3: Totals & Submission -->
+      <!-- Paso 3: Resumen y Emisión de Orden -->
       <Card class="border-slate-200 shadow-xs">
         <CardContent class="p-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
@@ -631,7 +650,7 @@ const onSubmit = async () => {
       </Card>
     </form>
 
-    <!-- Product Catalog Modal -->
+    <!-- Modal para Seleccionar Producto del Catálogo -->
     <ProductSelectorModal
       :open="isCatalogOpen"
       @update:open="isCatalogOpen = $event"
@@ -639,7 +658,7 @@ const onSubmit = async () => {
       @select-product="handleAddProduct"
     />
 
-    <!-- Customer Selector Modal -->
+    <!-- Modal para Seleccionar Cliente Comercial -->
     <CustomerSelectorModal
       :open="showCustomerModal"
       @update:open="showCustomerModal = $event"
@@ -647,7 +666,7 @@ const onSubmit = async () => {
       :selected-customer-id="selectedCustomerId"
     />
 
-    <!-- Confirm Remove Item Dialog -->
+    <!-- Modal de Confirmación para Quitar un Producto del Carrito -->
     <Dialog
       :open="itemToDelete !== null"
       @update:open="
@@ -686,7 +705,7 @@ const onSubmit = async () => {
       </div>
     </Dialog>
 
-    <!-- Confirm Reset Form Dialog -->
+    <!-- Modal de Confirmación para Limpiar Todo el Formulario -->
     <Dialog
       :open="showResetConfirm"
       @update:open="showResetConfirm = $event"
@@ -730,7 +749,7 @@ const onSubmit = async () => {
       </div>
     </Dialog>
 
-    <!-- Post-Issuance Official Invoice Voucher Modal -->
+    <!-- Modal de Comprobante / Factura Oficial (Patrón Snapshot) -->
     <Dialog
       :open="voucherModalOpen"
       @update:open="voucherModalOpen = $event"

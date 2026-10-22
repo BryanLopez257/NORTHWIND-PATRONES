@@ -143,11 +143,11 @@ const isActive = (path: string) => {
       </div>
     </header>
 
-    <div class="flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- Desktop Sidebar (Minimizable / Colapsable) -->
+    <div class="flex-1 flex items-start max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <!-- Desktop Sidebar (Minimizable / Colapsable y Sticky Constante) -->
       <aside
         :class="[
-          'hidden md:block transition-all duration-300 ease-in-out shrink-0 select-none',
+          'hidden md:block transition-all duration-300 ease-in-out shrink-0 select-none sticky top-20 self-start',
           sidebarCollapsed ? 'w-16 pr-2' : 'w-56 pr-5'
         ]"
       >

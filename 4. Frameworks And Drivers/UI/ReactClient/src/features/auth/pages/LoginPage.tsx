@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Store, LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button } from '@/shared/ui/Button';
@@ -67,14 +67,14 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-sky-50 to-slate-200">
       <Card className="w-full max-w-md shadow-xl border-slate-200/80 bg-white/95 backdrop-blur-xs">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto bg-sky-600 text-white p-3 rounded-2xl w-fit shadow-md mb-2">
-            <Store className="h-8 w-8" />
+          <div className="mx-auto bg-gradient-to-r from-sky-600 to-indigo-600 text-white p-3 rounded-2xl w-fit shadow-md mb-2">
+            <ShieldCheck className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-            NorthWind <span className="text-sky-600 font-semibold text-xl">Sales</span>
+            Iniciar sesión
           </CardTitle>
           <CardDescription className="text-slate-500 text-sm mt-1">
-            Ingrese sus credenciales corporativas para acceder al sistema
+            Ingresa tus credenciales para acceder al sistema
           </CardDescription>
         </CardHeader>
 
@@ -95,7 +95,7 @@ export const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <Input
               id="login-email"
-              label="Correo Electrónico"
+              label="Correo"
               type="email"
               autoComplete="email"
               placeholder="ejemplo@northwind.com"
@@ -115,14 +115,14 @@ export const LoginPage: React.FC = () => {
 
             <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
               <LogIn className="h-4 w-4 mr-2" />
-              Iniciar Sesión
+              Iniciar sesión
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
-            ¿No tiene una cuenta corporativa?{' '}
-            <Link to="/register" className="font-semibold text-sky-600 hover:text-sky-700 hover:underline">
-              Regístrese aquí
+            ¿No tienes una cuenta aún?{' '}
+            <Link to="/register" className="font-semibold text-sky-600 hover:text-sky-700 hover:underline ml-1">
+              Crear cuenta
             </Link>
           </div>
         </CardContent>

@@ -1,5 +1,16 @@
 import React from 'react';
-import { Printer, CheckCircle2, Building2, User, Calendar, Hash, Mail, Phone, MapPin } from 'lucide-react';
+import {
+  Printer,
+  CheckCircle2,
+  Building2,
+  User,
+  Calendar,
+  Hash,
+  Mail,
+  Phone,
+  MapPin,
+  ShieldCheck,
+} from 'lucide-react';
 import { InvoiceResponseDto } from '../types';
 import { Button } from '@/shared/ui/Button';
 
@@ -37,7 +48,7 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
       <div className="no-print flex items-center justify-between pb-3 border-b border-slate-200">
         <div className="flex items-center space-x-2 text-emerald-600 font-medium">
           <CheckCircle2 className="h-5 w-5" />
-          <span>Comprobante Oficial Emitido</span>
+          <span>Comprobante de Venta (Simulación Didáctica)</span>
         </div>
         <div className="flex items-center space-x-2">
           {showPrintButton && (
@@ -49,7 +60,7 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
               className="flex items-center space-x-1.5 bg-sky-600 hover:bg-sky-700 text-white"
             >
               <Printer className="h-4 w-4" />
-              <span>Imprimir Factura</span>
+              <span>Imprimir Comprobante</span>
             </Button>
           )}
           {onClose && (
@@ -63,10 +74,10 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
       {/* Printable Invoice Container */}
       <div
         id="printable-invoice"
-        className="bg-white rounded-lg border border-slate-200 p-6 md:p-8 text-slate-800 shadow-sm"
+        className="bg-white rounded-lg border border-slate-200 p-6 text-slate-800 shadow-sm"
       >
         {/* Header: Company & Invoice Info */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-slate-200 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-slate-200 gap-4">
           <div>
             <div className="flex items-center space-x-2">
               <div className="bg-sky-600 text-white p-2 rounded font-bold text-base">
@@ -79,14 +90,14 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
             <p className="text-xs text-slate-500 mt-1">
               R.U.C.: 1790012345001 &bull; Matriz: Av. Amazonas y República, Quito - Ecuador
             </p>
-            <p className="text-xs text-slate-500">
-              Teléfono: +593 (02) 299-0000 &bull; Obligado a llevar Contabilidad
+            <p className="text-xs text-slate-400">
+              Ambiente de Simulación Académica &bull; Sin Efectos Tributarios
             </p>
           </div>
 
           <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded border sm:border-0 border-slate-200 w-full sm:w-auto">
-            <span className="inline-block px-2.5 py-0.5 text-xs font-bold uppercase rounded bg-sky-100 text-sky-800 mb-1">
-              Factura Electrónica
+            <span className="inline-block px-2.5 py-0.5 text-xs font-bold uppercase rounded bg-amber-100 text-amber-900 mb-1">
+              Comprobante de Simulación
             </span>
             <div className="flex items-center sm:justify-end space-x-1.5 text-slate-900 font-mono text-base font-bold">
               <Hash className="h-4 w-4 text-slate-400" />
@@ -99,16 +110,22 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
           </div>
         </div>
 
-        {/* Customer & Transaction Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-5 border-b border-slate-200 text-sm">
-          <div className="space-y-1.5">
+        {/* Customer & Transaction Info (Historical Snapshot) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-b border-slate-200 text-sm">
+          <div className="space-y-1">
             <div className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-              Datos del Cliente
+              Datos del Cliente (Instantánea Histórica)
             </div>
             <div className="flex items-center space-x-2 text-slate-900 font-semibold">
               <Building2 className="h-4 w-4 text-slate-400 shrink-0" />
               <span>{invoice.customerFullName || invoice.customerId}</span>
             </div>
+            {invoice.customerId && (
+              <div className="text-xs text-slate-600">
+                <span className="font-semibold text-slate-700">Código Interno: </span>
+                <span className="font-mono font-bold text-sky-800">{invoice.customerId}</span>
+              </div>
+            )}
             <div className="flex items-center space-x-2 text-slate-600 text-xs">
               <span className="font-semibold text-slate-700">RUC/Cédula:</span>
               <span className="font-mono">{invoice.customerDocument || 'N/A'}</span>
@@ -131,18 +148,18 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
             )}
           </div>
 
-          <div className="space-y-1.5 md:pl-6 md:border-l md:border-slate-200">
+          <div className="space-y-1 md:pl-6 md:border-l md:border-slate-200">
             <div className="text-xs font-bold uppercase text-slate-400 tracking-wider">
               Detalles de la Operación
             </div>
             <div className="flex items-center space-x-2 text-slate-700 text-xs">
               <User className="h-3.5 w-3.5 text-slate-400" />
               <span className="font-semibold text-slate-700">Vendedor:</span>
-              <span>{invoice.sellerName || 'Sistema / Autoservicio'}</span>
+              <span>{invoice.sellerName || 'Ventas NorthWind'}</span>
             </div>
             <div className="flex items-center space-x-2 text-slate-700 text-xs">
               <span className="font-semibold text-slate-700">Forma de Pago:</span>
-              <span>Contado / Transferencia</span>
+              <span>Contado / Transferencia Inmediata</span>
             </div>
             <div className="flex items-center space-x-2 text-slate-700 text-xs">
               <span className="font-semibold text-slate-700">Moneda:</span>
@@ -151,32 +168,32 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
           </div>
         </div>
 
-        {/* Invoice Items Table */}
-        <div className="py-5">
+        {/* Invoice Items Table with Snapshot Legend */}
+        <div className="py-4">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-300 bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
-                  <th className="py-2.5 px-3">#</th>
-                  <th className="py-2.5 px-3">Descripción del Producto</th>
-                  <th className="py-2.5 px-3 text-center">Cant.</th>
-                  <th className="py-2.5 px-3 text-right">Precio Unitario</th>
-                  <th className="py-2.5 px-3 text-right">Subtotal</th>
+                  <th className="py-2 px-3">#</th>
+                  <th className="py-2 px-3">Descripción (Snapshot Congelado)</th>
+                  <th className="py-2 px-3 text-center">Cant.</th>
+                  <th className="py-2 px-3 text-right">Precio Unitario</th>
+                  <th className="py-2 px-3 text-right">Subtotal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {invoice.details && invoice.details.length > 0 ? (
                   invoice.details.map((item, index) => (
                     <tr key={`${item.productId}-${index}`} className="print-break-inside-avoid">
-                      <td className="py-2 px-3 text-slate-400 text-xs font-mono">{index + 1}</td>
-                      <td className="py-2 px-3 font-medium text-slate-800">
+                      <td className="py-1.5 px-3 text-slate-400 text-xs font-mono">{index + 1}</td>
+                      <td className="py-1.5 px-3 font-medium text-slate-800">
                         {item.productName || `Producto #${item.productId}`}
                       </td>
-                      <td className="py-2 px-3 text-center font-mono">{item.quantity}</td>
-                      <td className="py-2 px-3 text-right font-mono">
+                      <td className="py-1.5 px-3 text-center font-mono">{item.quantity}</td>
+                      <td className="py-1.5 px-3 text-right font-mono">
                         ${Number(item.unitPrice).toFixed(2)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900">
+                      <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-900">
                         ${Number(item.subTotal).toFixed(2)}
                       </td>
                     </tr>
@@ -184,7 +201,7 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
                 ) : (
                   <tr>
                     <td colSpan={5} className="py-4 text-center text-slate-400">
-                      No se encontraron detalles para esta factura.
+                      No se encontraron detalles para este comprobante.
                     </td>
                   </tr>
                 )}
@@ -194,34 +211,42 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
         </div>
 
         {/* Totals Summary */}
-        <div className="flex flex-col sm:flex-row justify-between items-start pt-4 border-t-2 border-slate-200 gap-6 print-break-inside-avoid">
-          <div className="text-xs text-slate-500 max-w-sm">
-            <p className="font-semibold text-slate-700 mb-1">Información Tributaria Adicional:</p>
-            <p>
-              Documento emitido de conformidad con las Resoluciones del Servicio de Rentas Internas (SRI).
-              Conserve este comprobante para efectos de garantía y deducibilidad tributaria.
+        <div className="flex flex-col sm:flex-row justify-between items-start pt-3 border-t-2 border-slate-200 gap-4 print-break-inside-avoid">
+          {/* Legal Historical Snapshot Pattern Alert */}
+          <div className="max-w-md space-y-1.5">
+            <div className="p-3 rounded-lg bg-sky-50 border border-sky-200 text-xs text-slate-700 flex items-start space-x-2.5">
+              <ShieldCheck className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong className="text-sky-900 block font-semibold">Registro de Integridad Histórica (Patrón Snapshot):</strong>
+                <span>
+                  Este comprobante utiliza datos congelados en el momento exacto de su emisión. Cualquier modificación futura en los catálogos maestros de clientes o productos no alterará el contenido histórico de este documento.
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 italic">
+              * Documento generado exclusivamente con fines académicos para la asignatura de Patrones de Diseño de Software (PDS). No tiene validez fiscal ni tributaria.
             </p>
           </div>
 
-          <div className="w-full sm:w-64 space-y-2 text-sm bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div className="flex justify-between text-slate-600">
+          <div className="w-full sm:w-60 space-y-1.5 text-sm bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div className="flex justify-between text-slate-600 text-xs">
               <span>Subtotal:</span>
               <span className="font-mono font-medium">${Number(invoice.subTotal).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-slate-600">
-              <span>IVA (15%):</span>
+            <div className="flex justify-between text-slate-600 text-xs">
+              <span>IVA (Tarifa 15%):</span>
               <span className="font-mono font-medium">${Number(invoice.tax).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-300">
+            <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-300">
               <span>TOTAL USD:</span>
-              <span className="font-mono text-sky-700">${Number(invoice.total).toFixed(2)}</span>
+              <span className="font-mono text-emerald-700">${Number(invoice.total).toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        {/* Footer Note */}
-        <div className="mt-8 pt-4 border-t border-dashed border-slate-200 text-center text-xs text-slate-400">
-          *** Gracias por preferir NorthWind Traders. Comprobante Válido para Crédito Tributario ***
+        {/* Footer Note: Sin alusiones de validez fiscal */}
+        <div className="mt-6 pt-3 border-t border-dashed border-slate-200 text-center text-xs text-slate-400">
+          *** Documento de Simulación Académica - NorthWind Sales (Sin Validez Tributaria) ***
         </div>
       </div>
     </div>

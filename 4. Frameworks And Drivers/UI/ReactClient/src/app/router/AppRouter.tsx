@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '@/shared/layouts/MainLayout';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -8,6 +8,17 @@ import { CreateOrderPage } from '@/features/orders/pages/CreateOrderPage';
 import { InvoicesPage } from '@/features/invoices/pages/InvoicesPage';
 import { CustomersPage } from '@/features/customers/pages/CustomersPage';
 import { ProductsPage } from '@/features/products/pages/ProductsPage';
+import { useAuthStore } from '@/core/auth/useAuthStore';
+
+// Componente para manejar la ruta histórica /user/logout de Blazor
+const LogoutRedirect: React.FC = () => {
+  const logout = useAuthStore((state) => state.logout);
+  useEffect(() => {
+    logout();
+  }, [logout]);
+
+  return <Navigate to="/login" replace />;
+};
 
 const router = createBrowserRouter([
   // Public routes
@@ -19,7 +30,7 @@ const router = createBrowserRouter([
     path: '/register',
     element: <RegisterPage />,
   },
-  // Aliases / Compatibility redirects
+  // Aliases / Compatibility redirects con Blazor
   {
     path: '/user/login',
     element: <Navigate to="/login" replace />,
@@ -27,6 +38,10 @@ const router = createBrowserRouter([
   {
     path: '/user/register',
     element: <Navigate to="/register" replace />,
+  },
+  {
+    path: '/user/logout',
+    element: <LogoutRedirect />,
   },
 
   // Protected routes within MainLayout

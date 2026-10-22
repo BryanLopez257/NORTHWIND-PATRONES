@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Receipt,
   Search,
@@ -10,6 +11,8 @@ import {
   Building2,
   Hash,
   AlertCircle,
+  ShoppingCart,
+  User,
 } from 'lucide-react';
 import { useInvoices } from '../hooks/useInvoices';
 import { InvoiceResponseDto } from '../types';
@@ -39,6 +42,17 @@ export const InvoicesPage: React.FC = () => {
     customerName: debouncedCustomerName,
   });
 
+  // Client-side filter to also support searching by customerId seamlessly
+  const filteredInvoices = useMemo(() => {
+    if (!customerNameQuery.trim()) return invoices;
+    const term = customerNameQuery.trim().toLowerCase();
+    return invoices.filter(
+      (inv) =>
+        (inv.customerFullName && inv.customerFullName.toLowerCase().includes(term)) ||
+        (inv.customerId && inv.customerId.toLowerCase().includes(term))
+    );
+  }, [invoices, customerNameQuery]);
+
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
@@ -65,10 +79,17 @@ export const InvoicesPage: React.FC = () => {
     }
   };
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(val);
+  };
+
   const hasActiveFilters = invoiceNumberQuery.trim() !== '' || customerNameQuery.trim() !== '';
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -77,11 +98,18 @@ export const InvoicesPage: React.FC = () => {
             <span>Historial de Facturas y Comprobantes</span>
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Consulta, auditoría y reimpresión de comprobantes electrónicos oficiales emitidos.
+            Consulta, auditoría contable y reimpresión de comprobantes electrónicos oficiales emitidos.
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
+          <Link to="/createorder">
+            <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white shadow-xs">
+              <ShoppingCart className="h-4 w-4 mr-1.5" />
+              <span>Nueva Orden</span>
+            </Button>
+          </Link>
+
           <Button
             type="button"
             variant="outline"
@@ -117,12 +145,12 @@ export const InvoicesPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Nombre del Cliente
+                Cliente (Nombre o Código ID)
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder="Ej. Alfreds Futterkiste..."
+                  placeholder="Ej. Alfreds Futterkiste o ALFKI..."
                   value={customerNameQuery}
                   onChange={(e) => setCustomerNameQuery(e.target.value)}
                   className="pl-9"
@@ -155,12 +183,12 @@ export const InvoicesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Invoices List Table */}
+      {/* Invoices List Table with Distinct Columns for Customer Name and Tax Identification */}
       <Card className="border-slate-200 shadow-xs">
         <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
             <FileText className="h-5 w-5 text-sky-600" />
-            <span>Comprobantes Emitidos ({invoices.length})</span>
+            <span>Comprobantes Emitidos ({filteredInvoices.length})</span>
           </CardTitle>
           {isFetching && (
             <span className="text-xs text-slate-400 font-medium animate-pulse">
@@ -174,58 +202,92 @@ export const InvoicesPage: React.FC = () => {
               <RefreshCw className="h-8 w-8 mx-auto text-slate-400 animate-spin" />
               <p>Cargando facturas...</p>
             </div>
-          ) : invoices.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 space-y-2">
+          ) : filteredInvoices.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 space-y-3">
               <Receipt className="h-10 w-10 mx-auto text-slate-300" />
               <p className="font-medium text-slate-600">No se encontraron facturas registradas</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 {hasActiveFilters
                   ? 'No hay comprobantes que coincidan con los criterios de búsqueda aplicados.'
                   : 'Las órdenes de venta confirmadas se reflejarán automáticamente en esta vista.'}
               </p>
+              <Link to="/createorder">
+                <Button size="sm" variant="outline" className="mt-2 text-sky-700 border-sky-200">
+                  <ShoppingCart className="h-4 w-4 mr-1.5" />
+                  <span>Emitir Primera Orden</span>
+                </Button>
+              </Link>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-40">N° Factura</TableHead>
-                    <TableHead className="w-48">Fecha de Emisión</TableHead>
-                    <TableHead>Cliente / Razón Social</TableHead>
-                    <TableHead className="w-40">RUC / Cédula</TableHead>
-                    <TableHead className="text-right w-36">Total ($)</TableHead>
-                    <TableHead className="text-center w-36">Acciones</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">N° Factura</TableHead>
+                    <TableHead className="w-32 whitespace-nowrap">Fecha Emisión</TableHead>
+                    <TableHead className="min-w-[180px]">Cliente / Razón Social</TableHead>
+                    <TableHead className="w-36 whitespace-nowrap">Doc. Tributario / ID</TableHead>
+                    <TableHead className="w-32 whitespace-nowrap">Vendedor</TableHead>
+                    <TableHead className="text-right w-20 whitespace-nowrap">Subtotal</TableHead>
+                    <TableHead className="text-right w-20 whitespace-nowrap">IVA (15%)</TableHead>
+                    <TableHead className="text-right w-24 whitespace-nowrap">Total</TableHead>
+                    <TableHead className="text-center w-28 whitespace-nowrap">Comprobante</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((inv) => (
+                  {filteredInvoices.map((inv) => (
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-xs font-bold text-sky-700">
                         {inv.invoiceNumber || `FAC-${inv.id}`}
                       </TableCell>
                       <TableCell className="text-xs text-slate-600">
                         <div className="flex items-center space-x-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                          <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <span>{formatDate(inv.createdDate)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-slate-800 flex items-center space-x-1.5">
-                          <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{inv.customerFullName || inv.customerId}</span>
+                      {/* Columna 1: Nombre / Razón Social con ancho amplio */}
+                      <TableCell className="font-medium text-slate-800">
+                        <div className="flex items-center space-x-1.5">
+                          <Building2 className="h-4 w-4 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[240px]" title={inv.customerFullName || inv.customerId}>
+                            {inv.customerFullName || inv.customerId}
+                          </span>
                         </div>
-                        {inv.sellerName && (
-                          <div className="text-[11px] text-slate-400">
-                            Vendedor: {inv.sellerName}
-                          </div>
-                        )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-600">
-                        {inv.customerDocument || 'N/A'}
+                      {/* Columna 2: Identificación Tributaria y Código ID */}
+                      <TableCell>
+                        <div className="flex flex-col space-y-0.5">
+                          <span className="font-mono text-xs text-slate-700 font-medium">
+                            {inv.customerDocument || 'S/D'}
+                          </span>
+                          {inv.customerId && (
+                            <span className="font-mono text-[11px] text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded w-fit">
+                              ID: {inv.customerId}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-slate-900">
-                        ${Number(inv.total).toFixed(2)}
+                      {/* Vendedor */}
+                      <TableCell>
+                        <div className="flex items-center space-x-1.5 text-xs text-slate-700">
+                          <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[130px]">{inv.sellerName || 'Ventas NW'}</span>
+                        </div>
                       </TableCell>
+                      {/* Subtotal */}
+                      <TableCell className="text-right font-mono text-xs text-slate-700">
+                        {formatCurrency(inv.subTotal)}
+                      </TableCell>
+                      {/* IVA */}
+                      <TableCell className="text-right font-mono text-xs text-slate-700">
+                        {formatCurrency(inv.tax)}
+                      </TableCell>
+                      {/* Total */}
+                      <TableCell className="text-right font-mono text-sm font-bold text-emerald-700">
+                        {formatCurrency(inv.total)}
+                      </TableCell>
+                      {/* Acción */}
                       <TableCell className="text-center">
                         <Button
                           type="button"
@@ -233,10 +295,10 @@ export const InvoicesPage: React.FC = () => {
                           size="sm"
                           onClick={() => handleOpenVoucher(inv)}
                           className="h-8 px-2.5 text-xs text-sky-700 border-sky-200 hover:bg-sky-50 flex items-center space-x-1.5 mx-auto"
-                          title="Ver detalle de factura e imprimir"
+                          title="Ver comprobante e imprimir"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Comprobante</span>
+                          <span>Ver</span>
                           <Printer className="h-3.5 w-3.5 ml-0.5 text-slate-400" />
                         </Button>
                       </TableCell>

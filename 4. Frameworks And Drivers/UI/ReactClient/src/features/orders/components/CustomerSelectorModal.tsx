@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User } from 'lucide-react';
+import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User, X } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
 import { Dialog } from '@/shared/ui/Dialog';
@@ -23,7 +23,9 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   selectedCustomerId,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchCriteria, setSearchCriteria] = useState<'all' | 'name' | 'id'>('all');
   const [typeFilter, setTypeFilter] = useState<'Todos' | 'Persona Natural' | 'Empresa'>('Todos');
+  const [blockedWarning, setBlockedWarning] = useState<string | null>(null);
 
   const { data: customers = [], isLoading, error } = useCustomers();
 
@@ -43,35 +45,52 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
         return false;
       }
 
-      // Realtime text search by name or ID
+      // Realtime text search by criterion
       if (searchTerm.trim()) {
         const term = searchTerm.trim().toLowerCase();
-        const matchesName = c.name.toLowerCase().includes(term);
-        const matchesId = c.id.toLowerCase().includes(term);
-        if (!matchesName && !matchesId) return false;
+        if (searchCriteria === 'id') {
+          return c.id.toLowerCase().includes(term);
+        }
+        if (searchCriteria === 'name') {
+          return c.name.toLowerCase().includes(term);
+        }
+        return c.name.toLowerCase().includes(term) || c.id.toLowerCase().includes(term);
       }
 
       return true;
     });
-  }, [customers, typeFilter, searchTerm]);
+  }, [customers, typeFilter, searchTerm, searchCriteria]);
 
   const handleSelect = (customer: CustomerDto) => {
     if (customer.currentBalance > 0) {
-      return; // Physically blocked
+      setBlockedWarning(
+        `No se puede seleccionar al cliente '${customer.name}' (${customer.id}) porque posee un saldo deudor pendiente de $${Number(customer.currentBalance).toFixed(2)}. Los clientes con saldo pendiente no están autorizados para emitir nuevas órdenes.`
+      );
+      return;
     }
+    setBlockedWarning(null);
     onSelectCustomer(customer);
     onOpenChange(false);
+  };
+
+  const getPlaceholder = () => {
+    if (searchCriteria === 'id') return 'Buscar específicamente por código (ej: ALFKI)...';
+    if (searchCriteria === 'name') return 'Buscar específicamente por nombre o razón social...';
+    return 'Buscar por código o nombre de cliente...';
   };
 
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(val) => {
+        if (!val) setBlockedWarning(null);
+        onOpenChange(val);
+      }}
       title="Seleccionar Cliente para la Orden"
       description="Seleccione un cliente con saldo al día para autorizar la emisión del pedido."
       className="max-w-4xl"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 pt-1">
         {/* Banner de Condición de Crédito */}
         <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-950 text-xs sm:text-sm flex items-start space-x-3 shadow-xs">
           <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -85,8 +104,26 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
           </div>
         </div>
 
+        {/* Alerta Reactiva de Advertencia si se intenta interactuar con un cliente moroso */}
+        {blockedWarning && (
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 text-xs sm:text-sm flex items-start space-x-2 animate-fade-in">
+            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-semibold block">Operación No Permitida:</span>
+              <span>{blockedWarning}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBlockedWarning(null)}
+              className="text-rose-500 hover:text-rose-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Controles de Búsqueda y Segmentación */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Botones de segmentación por Tipo de Cliente con contadores en vivo */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg w-fit border border-slate-200">
             <button
@@ -132,16 +169,38 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
             </button>
           </div>
 
-          {/* Barra de búsqueda en tiempo real */}
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por nombre o ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-xs sm:text-sm h-9"
-              autoFocus
-            />
+          {/* Barra de búsqueda con selector de criterio y botón limpiar */}
+          <div className="flex items-center gap-2 flex-1 md:max-w-md">
+            <select
+              value={searchCriteria}
+              onChange={(e) => setSearchCriteria(e.target.value as 'all' | 'name' | 'id')}
+              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="all">🔍 Todos</option>
+              <option value="name">👤 Nombre</option>
+              <option value="id">🏷️ Código (ID)</option>
+            </select>
+
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder={getPlaceholder()}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-8 text-xs sm:text-sm h-9"
+                autoFocus
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -169,7 +228,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                   <TableHead>Nombre / Razón Social</TableHead>
                   <TableHead>Tipo de Cliente</TableHead>
                   <TableHead className="text-right">Saldo Actual</TableHead>
-                  <TableHead className="text-right w-36">Acción</TableHead>
+                  <TableHead className="text-right w-44">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,6 +249,17 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-slate-900">{customer.name}</div>
+                        {isBlocked ? (
+                          <span className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-0.5">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            Bloqueado por saldo pendiente
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
+                            <Check className="w-3 h-3 shrink-0" />
+                            Habilitado para compra
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {customer.customerType === 'Empresa' ? (
@@ -220,9 +290,9 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                           <Button
                             type="button"
                             size="sm"
-                            disabled
-                            className="h-8 px-2 text-xs opacity-80 cursor-not-allowed bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-50"
-                            title="Cliente bloqueado por mantener saldo pendiente"
+                            onClick={() => handleSelect(customer)}
+                            className="h-8 px-2 text-xs bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100"
+                            title="Haga clic para ver el motivo de bloqueo"
                           >
                             <Lock className="h-3.5 w-3.5 mr-1 text-rose-600 shrink-0" />
                             <span>Moroso / Bloqueado</span>

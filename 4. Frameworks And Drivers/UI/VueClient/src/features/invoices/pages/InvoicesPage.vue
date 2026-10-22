@@ -81,10 +81,12 @@ const formatDate = (dateStr: string) => {
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    return new Intl.DateTimeFormat('es-EC', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(d);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   } catch {
     return dateStr;
   }
@@ -212,10 +214,10 @@ const hasActiveFilters = computed(
           <TableHeader>
             <TableRow>
               <TableHead class="w-32">Comprobante</TableHead>
-              <TableHead class="w-36">Fecha</TableHead>
+              <TableHead class="w-44 whitespace-nowrap">Fecha</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead class="w-36">Identificación</TableHead>
-              <TableHead class="w-32">Vendedor</TableHead>
+              <TableHead class="w-48 whitespace-nowrap">Vendedor</TableHead>
               <TableHead class="text-right w-24">Subtotal</TableHead>
               <TableHead class="text-right w-20">IVA (15%)</TableHead>
               <TableHead class="text-right w-24">Total</TableHead>
@@ -227,10 +229,10 @@ const hasActiveFilters = computed(
               <TableCell class="font-mono text-xs font-bold text-sky-700">
                 {{ inv.invoiceNumber || `FAC-${inv.id}` }}
               </TableCell>
-              <TableCell class="text-xs text-slate-600">
+              <TableCell class="text-xs text-slate-600 whitespace-nowrap">
                 <div class="flex items-center space-x-1.5">
                   <Calendar class="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{{ formatDate(inv.createdDate) }}</span>
+                  <span class="font-mono text-xs font-medium">{{ formatDate(inv.createdDate) }}</span>
                 </div>
               </TableCell>
               <TableCell class="font-medium text-slate-800">
@@ -254,10 +256,10 @@ const hasActiveFilters = computed(
                   </span>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell class="whitespace-nowrap">
                 <div class="flex items-center space-x-1.5 text-xs text-slate-700">
                   <User class="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span class="truncate max-w-[130px]">{{ inv.sellerName || 'Ventas NW' }}</span>
+                  <span class="truncate max-w-[220px]" :title="inv.sellerName || 'Ventas NW'">{{ inv.sellerName || 'Ventas NW' }}</span>
                 </div>
               </TableCell>
               <TableCell class="text-right font-mono text-xs text-slate-700">

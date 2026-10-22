@@ -12,6 +12,8 @@ import {
   X,
   Store,
   AlertTriangle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 import { Button, Dialog } from '@/shared/ui';
@@ -22,6 +24,14 @@ const route = useRoute();
 
 const mobileMenuOpen = ref(false);
 const showLogoutConfirm = ref(false);
+
+// Estado colapsable / minimizable de la barra lateral (con persistencia en localStorage)
+const sidebarCollapsed = ref(localStorage.getItem('nw_sidebar_collapsed') === 'true');
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  localStorage.setItem('nw_sidebar_collapsed', String(sidebarCollapsed.value));
+};
 
 const handleConfirmLogout = () => {
   showLogoutConfirm.value = false;
@@ -48,6 +58,7 @@ const isActive = (path: string) => {
       <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center">
           <div class="flex items-center space-x-3">
+            <!-- Botón Móvil -->
             <button
               type="button"
               class="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -57,6 +68,20 @@ const isActive = (path: string) => {
               <X v-if="mobileMenuOpen" class="h-6 w-6" />
               <Menu v-else class="h-6 w-6" />
             </button>
+
+            <!-- Botón para Minimizar / Expandir Barra Lateral (Desktop) -->
+            <button
+              type="button"
+              class="hidden md:flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              @click="toggleSidebar"
+              :title="sidebarCollapsed ? 'Expandir barra lateral' : 'Minimizar barra lateral'"
+              :aria-label="sidebarCollapsed ? 'Expandir barra lateral' : 'Minimizar barra lateral'"
+            >
+              <PanelLeftOpen v-if="sidebarCollapsed" class="h-5 w-5 text-sky-600" />
+              <PanelLeftClose v-else class="h-5 w-5 text-slate-600" />
+            </button>
+
+            <!-- Logotipo y Nombre del Sistema -->
             <div class="flex items-center space-x-2">
               <div class="bg-sky-600 text-white p-2 rounded-lg shadow-sm">
                 <Store class="h-5 w-5" />
@@ -77,7 +102,10 @@ const isActive = (path: string) => {
                 <span class="text-sm font-medium text-slate-800 leading-tight">
                   {{ authStore.user?.name || 'Usuario' }}
                 </span>
-                <span class="text-xs text-slate-500 leading-tight truncate max-w-[150px]">
+                <span
+                  class="text-xs text-slate-500 leading-tight truncate max-w-[280px]"
+                  :title="authStore.user?.email || 'usuario@northwind.com'"
+                >
                   {{ authStore.user?.email || 'usuario@northwind.com' }}
                 </span>
               </div>
@@ -98,22 +126,31 @@ const isActive = (path: string) => {
     </header>
 
     <div class="flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- Desktop Sidebar -->
-      <aside class="hidden md:block w-56 pr-5 shrink-0">
+      <!-- Desktop Sidebar (Minimizable / Colapsable) -->
+      <aside
+        :class="[
+          'hidden md:block transition-all duration-300 ease-in-out shrink-0 select-none',
+          sidebarCollapsed ? 'w-16 pr-2' : 'w-56 pr-5'
+        ]"
+      >
         <nav class="space-y-1">
           <RouterLink
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
+            :title="sidebarCollapsed ? item.label : undefined"
             :class="[
-              'flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all',
+              'flex items-center rounded-lg text-sm font-medium transition-all group',
+              sidebarCollapsed
+                ? 'justify-center p-2.5'
+                : 'space-x-3 px-3.5 py-2.5',
               isActive(item.path)
                 ? 'bg-sky-50 text-sky-700 font-semibold shadow-xs border-r-2 border-sky-600'
                 : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
             ]"
           >
             <component :is="item.icon" class="h-5 w-5 shrink-0" />
-            <span>{{ item.label }}</span>
+            <span v-if="!sidebarCollapsed" class="truncate">{{ item.label }}</span>
           </RouterLink>
         </nav>
       </aside>

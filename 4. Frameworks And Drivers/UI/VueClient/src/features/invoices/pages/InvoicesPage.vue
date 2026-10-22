@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   Receipt,
@@ -52,6 +52,19 @@ const {
 } = useInvoices(filters);
 
 const invoiceItems = computed(() => invoices.value ?? []);
+
+
+const currentPage = ref(1);
+const pageSize = 10;
+
+watch([invoiceNumberQuery, customerNameQuery], () => {
+  currentPage.value = 1;
+});
+
+const paginatedInvoices = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredInvoices.value.slice(start, start + pageSize);
+});
 
 const filteredInvoices = computed(() => {
   const list = invoiceItems.value;
@@ -225,7 +238,7 @@ const hasActiveFilters = computed(
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="inv in filteredInvoices" :key="inv.id">
+            <TableRow v-for="inv in paginatedInvoices" :key="inv.id">
               <TableCell class="font-mono text-xs font-bold text-sky-700">
                 {{ inv.invoiceNumber || `FAC-${inv.id}` }}
               </TableCell>
@@ -288,6 +301,7 @@ const hasActiveFilters = computed(
             </TableRow>
           </TableBody>
         </Table>
+        <Pagination v-model:current-page="currentPage" :total-items="filteredInvoices.length" :page-size="pageSize" item-name="facturas" />
       </CardContent>
     </Card>
 

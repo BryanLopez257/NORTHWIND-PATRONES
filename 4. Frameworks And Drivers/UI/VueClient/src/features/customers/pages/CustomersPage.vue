@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Users,
   UserPlus,
@@ -31,6 +31,7 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  Pagination,
 } from '@/shared/ui';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import { useCustomers, useDeleteCustomer } from '../composables/useCustomers';
@@ -90,6 +91,19 @@ const {
 } = useCustomers(filters);
 
 const customerItems = computed(() => customers.value ?? []);
+
+const currentPage = ref(1);
+const pageSize = 10;
+
+watch([searchTermInput, customerTypeFilter, balanceFilter, minBalanceInput, maxBalanceInput, orderBy, ascending], () => {
+  currentPage.value = 1;
+});
+
+const paginatedCustomers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return customerItems.value.slice(start, start + pageSize);
+});
+
 
 const handleOpenCreate = () => {
   selectedCustomer.value = null;
@@ -372,7 +386,7 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="c in customerItems" :key="c.id">
+            <TableRow v-for="c in paginatedCustomers" :key="c.id">
               <TableCell class="font-mono text-xs font-bold text-sky-700">
                 {{ c.id }}
               </TableCell>
@@ -458,6 +472,7 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableBody>
         </Table>
+        <Pagination v-model:current-page="currentPage" :total-items="customerItems.length" :page-size="pageSize" item-name="clientes" />
       </CardContent>
     </Card>
 

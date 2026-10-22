@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Search,
   Check,
@@ -24,6 +24,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  Pagination,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils/cn';
 
@@ -56,6 +57,19 @@ const counts = computed(() => {
   const personas = list.filter((c) => c.customerType === 'Persona Natural').length;
   const empresas = list.filter((c) => c.customerType === 'Empresa').length;
   return { todos, personas, empresas };
+});
+
+
+const currentPage = ref(1);
+const pageSize = 5;
+
+watch([searchTerm, searchCriteria, typeFilter], () => {
+  currentPage.value = 1;
+});
+
+const paginatedCustomers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredCustomers.value.slice(start, start + pageSize);
 });
 
 const filteredCustomers = computed(() => {
@@ -250,7 +264,7 @@ const handleOpenChange = (val: boolean) => {
           </TableHeader>
           <TableBody>
             <TableRow
-              v-for="customer in filteredCustomers"
+              v-for="customer in paginatedCustomers"
               :key="customer.id"
               :class="
                 cn(
@@ -333,11 +347,16 @@ const handleOpenChange = (val: boolean) => {
         </Table>
       </div>
 
+      <!-- Paginación -->
+      <Pagination
+        v-model:current-page="currentPage"
+        :total-items="filteredCustomers.length"
+        :page-size="pageSize"
+        item-name="clientes"
+      />
+
       <!-- Footer -->
-      <div class="flex justify-between items-center pt-2">
-        <span class="text-xs text-slate-500">
-          Mostrando {{ filteredCustomers.length }} de {{ customerList.length }} clientes
-        </span>
+      <div class="flex justify-end pt-1">
         <Button type="button" variant="outline" @click="handleOpenChange(false)">
           Cerrar
         </Button>

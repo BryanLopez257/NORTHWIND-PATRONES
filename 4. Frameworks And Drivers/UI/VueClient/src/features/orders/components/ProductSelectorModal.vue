@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2 } from 'lucide-vue-next';
 import { useProducts } from '@/features/products/composables/useProducts';
 import type { ProductDto } from '@/features/products/types';
@@ -14,6 +14,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  Pagination,
 } from '@/shared/ui';
 
 interface Props {
@@ -37,6 +38,19 @@ const onlyInStock = ref(true);
 
 const { data: products, isLoading, error } = useProducts();
 const productList = computed(() => products.value ?? []);
+
+
+const currentPage = ref(1);
+const pageSize = 5;
+
+watch([searchTerm, searchCriteria, onlyInStock], () => {
+  currentPage.value = 1;
+});
+
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredProducts.value.slice(start, start + pageSize);
+});
 
 const filteredProducts = computed(() => {
   return productList.value.filter((p) => {
@@ -151,7 +165,7 @@ const getPlaceholder = () => {
           </TableHeader>
           <TableBody>
             <TableRow
-              v-for="product in filteredProducts"
+              v-for="product in paginatedProducts"
               :key="product.id"
               :class="selectedProductIds.includes(product.id) ? 'bg-amber-50/30' : ''"
             >
@@ -205,11 +219,16 @@ const getPlaceholder = () => {
         </Table>
       </div>
 
+      <!-- Paginación -->
+      <Pagination
+        v-model:current-page="currentPage"
+        :total-items="filteredProducts.length"
+        :page-size="pageSize"
+        item-name="productos"
+      />
+
       <!-- Footer -->
-      <div class="flex justify-between items-center pt-2">
-        <span class="text-xs text-slate-500">
-          Mostrando {{ filteredProducts.length }} de {{ productList.length }} productos
-        </span>
+      <div class="flex justify-end pt-1">
         <Button type="button" variant="outline" @click="emit('update:open', false)">
           Cerrar Catálogo
         </Button>

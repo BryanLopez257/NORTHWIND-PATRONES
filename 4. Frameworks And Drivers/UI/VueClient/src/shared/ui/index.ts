@@ -8,6 +8,7 @@ export { default as CardContent } from './CardContent.vue';
 export { default as CardFooter } from './CardFooter.vue';
 export { default as Dialog } from './Dialog.vue';
 export { default as Input } from './Input.vue';
+export { default as Pagination } from './Pagination.vue';
 export { default as Table } from './Table.vue';
 export { default as TableHeader } from './TableHeader.vue';
 export { default as TableBody } from './TableBody.vue';

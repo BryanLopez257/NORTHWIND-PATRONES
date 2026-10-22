@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Package,
   Plus,
@@ -29,6 +29,7 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  Pagination,
 } from '@/shared/ui';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import { useProducts, useDeleteProduct } from '../composables/useProducts';
@@ -86,6 +87,19 @@ const {
 } = useProducts(filters);
 
 const productItems = computed(() => products.value ?? []);
+
+const currentPage = ref(1);
+const pageSize = 10;
+
+watch([searchTermInput, stockFilter, minPriceInput, maxPriceInput, orderBy, ascending], () => {
+  currentPage.value = 1;
+});
+
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return productItems.value.slice(start, start + pageSize);
+});
+
 
 const handleOpenCreate = () => {
   selectedProduct.value = null;
@@ -315,7 +329,7 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="p in productItems" :key="p.id">
+            <TableRow v-for="p in paginatedProducts" :key="p.id">
               <TableCell class="font-mono text-xs font-bold text-slate-500">
                 #{{ p.id }}
               </TableCell>
@@ -384,6 +398,7 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableBody>
         </Table>
+        <Pagination v-model:current-page="currentPage" :total-items="productItems.length" :page-size="pageSize" item-name="productos" />
       </CardContent>
     </Card>
 

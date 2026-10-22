@@ -14,13 +14,17 @@ import {
   AlertTriangle,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
+  Moon,
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/core/auth/useAuthStore';
+import { useTheme } from '@/shared/composables/useTheme';
 import { Button, Dialog } from '@/shared/ui';
 
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
+const { isDark, toggleTheme } = useTheme();
 
 const mobileMenuOpen = ref(false);
 const showLogoutConfirm = ref(false);
@@ -52,9 +56,9 @@ const isActive = (path: string) => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-slate-50">
+  <div class="min-h-screen flex flex-col bg-slate-50 transition-colors duration-200">
     <!-- Top Navbar -->
-    <header class="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+    <header class="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm transition-colors duration-200">
       <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center">
           <div class="flex items-center space-x-3">
@@ -92,8 +96,21 @@ const isActive = (path: string) => {
             </div>
           </div>
 
-          <!-- User profile & Logout -->
-          <div class="flex items-center space-x-4">
+          <!-- User profile, Theme switcher & Logout -->
+          <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Botón Selector de Tema Claro / Oscuro -->
+            <button
+              type="button"
+              class="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
+              @click="toggleTheme"
+              :title="isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
+              :aria-label="isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
+            >
+              <Sun v-if="isDark" class="h-5 w-5 text-amber-400 hover:text-amber-300" />
+              <Moon v-else class="h-5 w-5 text-slate-600 hover:text-slate-900" />
+            </button>
+
+            <!-- Perfil de Usuario -->
             <div class="hidden sm:flex items-center space-x-2 text-right">
               <div class="h-8 w-8 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-semibold text-xs border border-sky-200">
                 <UserIcon class="h-4 w-4" />
@@ -111,6 +128,7 @@ const isActive = (path: string) => {
               </div>
             </div>
 
+            <!-- Botón Cerrar Sesión -->
             <Button
               variant="outline"
               size="sm"

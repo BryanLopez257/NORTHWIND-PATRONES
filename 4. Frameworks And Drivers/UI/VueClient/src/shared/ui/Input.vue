@@ -4,6 +4,7 @@ import { cn } from '../utils/cn';
 
 interface Props {
   modelValue?: string | number;
+  value?: string | number;
   label?: string;
   error?: string;
   helperText?: string;
@@ -21,7 +22,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: '',
+  modelValue: undefined,
+  value: undefined,
   label: '',
   error: '',
   helperText: '',
@@ -47,6 +49,12 @@ const inputId = computed(() => {
   return undefined;
 });
 
+const displayValue = computed(() => {
+  if (props.value !== undefined) return props.value;
+  if (props.modelValue !== undefined) return props.modelValue;
+  return '';
+});
+
 const handleInput = (event: Event) => {
   const target = event.target as HTMLInputElement;
   emit('update:modelValue', target.value);
@@ -65,7 +73,7 @@ const handleInput = (event: Event) => {
     <input
       :id="inputId"
       :type="type"
-      :value="modelValue"
+      :value="displayValue"
       :placeholder="placeholder"
       :disabled="disabled"
       :maxlength="maxLength"

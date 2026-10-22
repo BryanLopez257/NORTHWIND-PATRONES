@@ -382,11 +382,7 @@ const onSubmit = async () => {
               <div class="flex gap-2">
                 <div class="relative flex-1">
                   <Input
-                    :value="
-                      selectedCustomer
-                        ? `${selectedCustomer.name} (${selectedCustomer.id})`
-                        : ''
-                    "
+                    :model-value="selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.id})` : ''"
                     placeholder="Seleccione un cliente..."
                     readonly
                     @click="showCustomerModal = true"

@@ -4,7 +4,6 @@
     <Project Path="1. Enterprise Business Rules/NorthWind.Entities/NorthWind.Entities.csproj" />
     <Project Path="1. Enterprise Business Rules/NorthWind.Events.Entities/NorthWind.Events.Entities.csproj" />
     <Project Path="1. Enterprise Business Rules/NorthWind.Exceptions.Entities/NorthWind.Exceptions.Entities.csproj" />
-    <Project Path="1. Enterprise Business Rules/NorthWind.HttpDelegatingHandlers/NorthWind.HttpDelegatingHandlers.csproj" />
     <Project Path="1. Enterprise Business Rules/NorthWind.Result.Entities/NorthWind.Result.Entities.csproj" />
     <Project Path="1. Enterprise Business Rules/NorthWind.Sales.Entities/NorthWind.Sales.Entities.csproj" />
     <Project Path="1. Enterprise Business Rules/NorthWind.Sales.Validators.Entities/NorthWind.Sales.Validators.Entities.csproj" />
@@ -14,7 +13,6 @@
   <Folder Name="/2. Application Business Rules/">
     <Project Path="2. Application Business Rules/NorthWind.Sales.Backend.BusinessObjects/NorthWind.Sales.Backend.BusinessObjects.csproj" />
     <Project Path="2. Application Business Rules/NorthWind.Sales.Backend.UseCases/NorthWind.Sales.Backend.UseCases.csproj" />
-    <Project Path="2. Application Business Rules/NorthWind.Sales.Frontend.BusinessObjects/NorthWind.Sales.Frontend.BusinessObjects.csproj" />
   </Folder>
   <Folder Name="/3. Interface Adapters/" />
   <Folder Name="/3. Interface Adapters/Controllers/">
@@ -22,17 +20,12 @@
   </Folder>
   <Folder Name="/3. Interface Adapters/Gateways/">
     <Project Path="3. Interface Adapters/Gateways/NorthWind.Sales.Backend.SmtpGateways/NorthWind.Sales.Backend.SmtpGateways.csproj" />
-    <Project Path="3. Interface Adapters/Gateways/NorthWind.Sales.Frontend.WebApiGateways/NorthWind.Sales.Frontend.WebApiGateways.csproj" />
   </Folder>
   <Folder Name="/3. Interface Adapters/Presenters/">
     <Project Path="3. Interface Adapters/Presenters/NorthWind.Sales.Backend.Presenters/NorthWind.Sales.Backend.Presenters.csproj" />
   </Folder>
   <Folder Name="/3. Interface Adapters/Repositories/">
     <Project Path="3. Interface Adapters/Repositories/NorthWind.Sales.Backend.Repositories/NorthWind.Sales.Backend.Repositories.csproj" />
-  </Folder>
-  <Folder Name="/3. Interface Adapters/Views/">
-    <Project Path="3. Interface Adapters/Views/NorthWind.RazorComponents/NorthWind.RazorComponents.csproj" />
-    <Project Path="3. Interface Adapters/Views/NorthWind.Sales.Frontend.Views/NorthWind.Sales.Frontend.Views.csproj" />
   </Folder>
   <Folder Name="/4. Frameworks And Drivers/">
     <Project Path="4. Frameworks And Drivers/NorthWind.UserServices/NorthWind.UserServices.csproj" />
@@ -43,16 +36,13 @@
   </Folder>
   <Folder Name="/4. Frameworks And Drivers/IoC/">
     <Project Path="4. Frameworks And Drivers/IoC/NorthWind.Sales.Backend.IoC/NorthWind.Sales.Backend.IoC.csproj" />
-    <Project Path="4. Frameworks And Drivers/IoC/NorthWind.Sales.Frontend.IoC/NorthWind.Sales.Frontend.IoC.csproj" />
   </Folder>
   <Folder Name="/4. Frameworks And Drivers/UI/">
-    <Project Path="4. Frameworks And Drivers/UI/NorthWind.Sales.BlazorClient/NorthWind.Sales.BlazorClient.csproj" />
     <Project Path="4. Frameworks And Drivers/UI/NorthWind.Sales.WebApi/NorthWind.Sales.WebApi.csproj" />
   </Folder>
   <Folder Name="/NorthWind.Membership/">
     <Project Path="NorthWind.Membership/NorthWind.Membership.Backend.AspNetIdentity/NorthWind.Membership.Backend.AspNetIdentity.csproj" />
     <Project Path="NorthWind.Membership/NorthWind.Membership.Backend.Core/NorthWind.Membership.Backend.Core.csproj" />
     <Project Path="NorthWind.Membership/NorthWind.Membership.Entities/NorthWind.Membership.Entities.csproj" />
-    <Project Path="NorthWind.Membership/NorthWind.Membership.Frontend.RazorViews/NorthWind.Membership.Frontend.RazorViews.csproj" />
   </Folder>
 </Solution>

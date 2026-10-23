@@ -16,7 +16,7 @@ import {
   UserPlus,
   ArrowLeftRight,
 } from 'lucide-react';
-import { useCustomers } from '@/features/customers/hooks/useCustomers';
+import { customersService } from '@/features/customers/customersService';
 import { CustomerDto } from '@/features/customers/types';
 import { ProductDto } from '@/features/products/types';
 import { useCreateOrder } from '../hooks/useCreateOrder';
@@ -45,13 +45,12 @@ import {
 } from '@/core/utils/inputFilters';
 
 export const CreateOrderPage: React.FC = () => {
-  // Query customers
-  const { data: customers = [] } = useCustomers();
   const createOrderMutation = useCreateOrder();
 
   // Form State
   const [customerInput, setCustomerInput] = useState<string>('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
   const [customerLookupError, setCustomerLookupError] = useState<string | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
 
@@ -82,13 +81,6 @@ export const CreateOrderPage: React.FC = () => {
   // Submission error
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Selected customer object
-  const selectedCustomer: CustomerDto | undefined = useMemo(() => {
-    const idToSearch = selectedCustomerId || customerInput.trim().toUpperCase();
-    if (!idToSearch) return undefined;
-    return customers.find((c) => c.id.toUpperCase() === idToSearch);
-  }, [customers, selectedCustomerId, customerInput]);
-
   // Sincronización automática de Cédula/RUC desde la ficha del cliente seleccionado (ReadOnly por integridad fiscal)
   React.useEffect(() => {
     if (selectedCustomer) {
@@ -103,10 +95,11 @@ export const CreateOrderPage: React.FC = () => {
   const hasPendingBalance = (selectedCustomer?.currentBalance ?? 0) > 0;
 
   // Validación activa del cliente al tipear o en blur
-  const validateCustomerCode = (code: string) => {
+  const validateCustomerCode = async (code: string) => {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) {
       setSelectedCustomerId('');
+      setSelectedCustomer(null);
       setCustomerDocument('');
       setCustomerLookupError('Debe ingresar o seleccionar un código de cliente (5 letras).');
       return;
@@ -114,34 +107,55 @@ export const CreateOrderPage: React.FC = () => {
 
     if (cleanCode.length < 5) {
       setSelectedCustomerId('');
+      setSelectedCustomer(null);
       setCustomerDocument('');
       setCustomerLookupError('El código de cliente debe contener exactamente 5 letras mayúsculas.');
       return;
     }
 
-    const found = customers.find((c) => c.id.toUpperCase() === cleanCode);
-    if (!found) {
-      setSelectedCustomerId('');
-      setCustomerDocument('');
-      setCustomerLookupError(`El cliente con código '${cleanCode}' no existe en la base de datos.`);
+    if (selectedCustomer && selectedCustomer.id.toUpperCase() === cleanCode) {
+      if (selectedCustomer.currentBalance > 0) {
+        setCustomerLookupError(
+          `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${selectedCustomer.currentBalance.toFixed(
+            2
+          )}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`
+        );
+      } else {
+        setCustomerLookupError(null);
+      }
       return;
     }
 
-    if (found.currentBalance > 0) {
+    try {
+      const found = await customersService.getCustomerById(cleanCode);
+      if (!found || !found.id) {
+        setSelectedCustomerId('');
+        setSelectedCustomer(null);
+        setCustomerDocument('');
+        setCustomerLookupError(`El cliente con código '${cleanCode}' no existe en la base de datos.`);
+        return;
+      }
+
+      setSelectedCustomer(found);
       setSelectedCustomerId(found.id);
       setCustomerDocument(found.identification || '');
-      setCustomerLookupError(
-        `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${found.currentBalance.toFixed(
-          2
-        )}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`
-      );
-      return;
-    }
+      markTouched('document');
 
-    setSelectedCustomerId(found.id);
-    setCustomerDocument(found.identification || '');
-    markTouched('document');
-    setCustomerLookupError(null);
+      if (found.currentBalance > 0) {
+        setCustomerLookupError(
+          `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${found.currentBalance.toFixed(
+            2
+          )}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`
+        );
+      } else {
+        setCustomerLookupError(null);
+      }
+    } catch {
+      setSelectedCustomerId('');
+      setSelectedCustomer(null);
+      setCustomerDocument('');
+      setCustomerLookupError(`El cliente con código '${cleanCode}' no existe en la base de datos.`);
+    }
   };
 
   // Document validation with EcuadorianValidator
@@ -245,10 +259,19 @@ export const CreateOrderPage: React.FC = () => {
 
   // Handler for selecting customer from CustomerSelectorModal
   const handleSelectCustomerFromModal = (customer: CustomerDto) => {
+    setSelectedCustomer(customer);
     setCustomerInput(customer.id.toUpperCase());
     setSelectedCustomerId(customer.id.toUpperCase());
     setCustomerDocument(customer.identification || '');
-    setCustomerLookupError(null);
+    if (customer.currentBalance > 0) {
+      setCustomerLookupError(
+        `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${customer.currentBalance.toFixed(
+          2
+        )}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`
+      );
+    } else {
+      setCustomerLookupError(null);
+    }
     markTouched('customer');
     markTouched('document');
     setFormError(null);
@@ -369,6 +392,7 @@ export const CreateOrderPage: React.FC = () => {
 
   // Reset form
   const handleResetForm = () => {
+    setSelectedCustomer(null);
     setCustomerInput('');
     setSelectedCustomerId('');
     setCustomerLookupError(null);
@@ -396,7 +420,7 @@ export const CreateOrderPage: React.FC = () => {
       country: true,
     });
 
-    validateCustomerCode(customerInput);
+    await validateCustomerCode(customerInput);
 
     if (!selectedCustomerId) {
       setFormError('Por favor seleccione o ingrese un código de cliente válido (5 letras).');
@@ -604,6 +628,7 @@ export const CreateOrderPage: React.FC = () => {
                         validateCustomerCode(clean);
                       } else {
                         setSelectedCustomerId('');
+                        setSelectedCustomer(null);
                         setCustomerDocument('');
                         setCustomerLookupError(null);
                       }

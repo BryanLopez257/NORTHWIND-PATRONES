@@ -19,7 +19,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.ToListAsync(queryable);
     }
 
-    public async Task<IEnumerable<ProductDto>> GetProducts(ProductFilterDto filter)
+    public async Task<PagedResultDto<ProductDto>> GetProducts(ProductFilterDto filter)
     {
         var query = context.Products.AsQueryable();
 
@@ -28,7 +28,8 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var term = filter.SearchTerm.Trim();
-                query = query.Where(p => p.Name.Contains(term));
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(p => p.Name.Contains(term) || (hasNumericId && p.Id == numericId));
             }
 
             if (filter.MinPrice.HasValue)
@@ -68,8 +69,17 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             query = query.OrderBy(p => p.Name);
         }
 
-        var projected = query.Select(p => new ProductDto(p.Id, p.Name, p.UnitsInStock, p.UnitPrice));
-        return await context.ToListAsync(projected);
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(p => new ProductDto(p.Id, p.Name, p.UnitsInStock, p.UnitPrice));
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<ProductDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<ProductDto> GetProductById(int id)
@@ -86,7 +96,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.AnyAsync(query);
     }
 
-    public async Task<IEnumerable<CustomerDto>> GetCustomers(CustomerFilterDto filter)
+    public async Task<PagedResultDto<CustomerDto>> GetCustomers(CustomerFilterDto filter)
     {
         var query = context.Customers.AsQueryable();
 
@@ -176,7 +186,15 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             query = query.OrderBy(c => c.Name);
         }
 
-        var projected = query.Select(c => new CustomerDto(
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(c => new CustomerDto(
             c.Id,
             c.Name,
             c.CurrentBalance,
@@ -188,7 +206,8 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             c.SecondLastName,
             c.BusinessName,
             c.TradeName));
-        return await context.ToListAsync(projected);
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<CustomerDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<CustomerDto> GetCustomerById(string id)
@@ -253,7 +272,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.FirstOrDefaultAsync(query);
     }
 
-    public async Task<IEnumerable<InvoiceResponseDto>> GetInvoices(InvoiceFilterDto filter)
+    public async Task<PagedResultDto<InvoiceResponseDto>> GetInvoices(InvoiceFilterDto filter)
     {
         var query = context.Invoices.AsQueryable();
 
@@ -294,7 +313,15 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
 
         query = query.OrderByDescending(i => i.CreatedDate);
 
-        var projected = query.Select(i => new InvoiceResponseDto
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(i => new InvoiceResponseDto
         {
             Id = i.Id,
             InvoiceNumber = i.InvoiceNumber,
@@ -318,7 +345,8 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             }).ToList()
         });
 
-        return await context.ToListAsync(projected);
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<InvoiceResponseDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<int> GetLastInvoiceId()

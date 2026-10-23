@@ -1,10 +1,10 @@
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
-import { InvoiceFilters, InvoiceResponseDto } from './types';
+import { InvoiceFilters, InvoiceResponseDto, PagedResult } from './types';
 
 export const invoicesService = {
-  async getInvoices(filters?: InvoiceFilters): Promise<InvoiceResponseDto[]> {
-    const params: Record<string, string> = {};
+  async getInvoices(filters?: InvoiceFilters): Promise<PagedResult<InvoiceResponseDto>> {
+    const params: Record<string, unknown> = {};
     if (filters?.searchTerm?.trim()) {
       params.searchTerm = filters.searchTerm.trim();
     }
@@ -14,8 +14,14 @@ export const invoicesService = {
     if (filters?.customerName?.trim()) {
       params.customerName = filters.customerName.trim();
     }
+    if (typeof filters?.pageNumber === 'number') {
+      params.pageNumber = filters.pageNumber;
+    }
+    if (typeof filters?.pageSize === 'number') {
+      params.pageSize = filters.pageSize;
+    }
 
-    const response = await apiClient.get<InvoiceResponseDto[]>(ENDPOINTS.INVOICES.BASE, { params });
+    const response = await apiClient.get<PagedResult<InvoiceResponseDto>>(ENDPOINTS.INVOICES.BASE, { params });
     return response.data;
   },
 

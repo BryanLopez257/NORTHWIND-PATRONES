@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 namespace Microsoft.AspNetCore.Builder;
 
 public static class CustomersController
@@ -32,6 +32,8 @@ public static class CustomersController
         string? orderBy,
         bool? ascending,
         string? criteria,
+        int? pageNumber,
+        int? pageSize,
         IGetCustomersInputPort inputPort,
         GetCustomersPresenter presenter)
     {
@@ -44,7 +46,9 @@ public static class CustomersController
             MaxBalance = maxBalance,
             OrderBy = orderBy ?? "name",
             Ascending = ascending ?? true,
-            Criteria = criteria
+            Criteria = criteria,
+            PageNumber = pageNumber ?? 1,
+            PageSize = pageSize ?? 10
         };
 
         await inputPort.Handle(filter);

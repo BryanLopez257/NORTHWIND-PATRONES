@@ -1,6 +1,6 @@
 namespace NorthWind.Sales.Entities.Dtos.Invoices;
 
-public class InvoiceFilterDto
+public class InvoiceFilterDto : PaginationFilterDto
 {
     /// <summary>
     /// Término de búsqueda global (criterio 'all'): N° factura, código/documento o nombre del cliente.

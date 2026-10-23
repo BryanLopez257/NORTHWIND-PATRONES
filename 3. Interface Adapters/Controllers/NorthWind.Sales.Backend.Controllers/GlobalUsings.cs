@@ -14,4 +14,5 @@ global using NorthWind.Sales.Entities.Dtos.CreateOrder;
 global using NorthWind.Sales.Entities.Dtos.Products;
 global using NorthWind.Sales.Entities.Dtos.Customers;
 global using NorthWind.Sales.Entities.Dtos.Invoices;
+global using NorthWind.Sales.Entities.Dtos.Common;
 global using NorthWind.Sales.Entities.ValueObjects;

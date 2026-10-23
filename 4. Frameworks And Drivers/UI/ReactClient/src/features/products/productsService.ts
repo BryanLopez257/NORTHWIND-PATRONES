@@ -1,9 +1,9 @@
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
-import { ProductDto, CreateProductDto, UpdateProductDto, ProductFilters } from './types';
+import { ProductDto, CreateProductDto, UpdateProductDto, ProductFilters, PagedResult } from './types';
 
 export const productsService = {
-  async getProducts(filters?: ProductFilters): Promise<ProductDto[]> {
+  async getProducts(filters?: ProductFilters): Promise<PagedResult<ProductDto>> {
     const params: Record<string, unknown> = {};
     if (filters) {
       if (filters.searchTerm?.trim()) params.searchTerm = filters.searchTerm.trim();
@@ -14,9 +14,11 @@ export const productsService = {
       }
       if (filters.orderBy) params.orderBy = filters.orderBy;
       if (typeof filters.ascending === 'boolean') params.ascending = filters.ascending;
+      if (typeof filters.pageNumber === 'number') params.pageNumber = filters.pageNumber;
+      if (typeof filters.pageSize === 'number') params.pageSize = filters.pageSize;
     }
 
-    const response = await apiClient.get<ProductDto[]>(ENDPOINTS.PRODUCTS.BASE, { params });
+    const response = await apiClient.get<PagedResult<ProductDto>>(ENDPOINTS.PRODUCTS.BASE, { params });
     return response.data;
   },
 

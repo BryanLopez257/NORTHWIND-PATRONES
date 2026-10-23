@@ -22,36 +22,48 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Dialog } from '@/shared/ui/Dialog';
+import { Pagination } from '@/shared/ui';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
 
 export const InvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCriteria, setSearchCriteria] = useState<'all' | 'invoiceNumber' | 'customer'>('all');
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const pageSize = 10;
 
   const debouncedSearchTerm = useDebounce(searchTerm, 350);
 
   // Mapeo de filtros al backend según el criterio seleccionado.
-  // El filtrado se ejecuta íntegramente en SQL Server (sin filtrado secundario en cliente).
+  // El filtrado y la paginación se ejecutan íntegramente en SQL Server.
   const serverFilters = useMemo<InvoiceFilters>(() => {
     const clean = debouncedSearchTerm.trim();
-    if (!clean) return {};
+    const base: InvoiceFilters = { pageNumber, pageSize };
+    if (!clean) return base;
     if (searchCriteria === 'invoiceNumber') {
-      return { invoiceNumber: clean };
+      return { ...base, invoiceNumber: clean };
     }
     if (searchCriteria === 'customer') {
-      return { customerName: clean };
+      return { ...base, customerName: clean };
     }
     // 'all': búsqueda global delegada al backend
-    return { searchTerm: clean };
+    return { ...base, searchTerm: clean };
+  }, [debouncedSearchTerm, searchCriteria, pageNumber, pageSize]);
+
+  React.useEffect(() => {
+    setPageNumber(1);
   }, [debouncedSearchTerm, searchCriteria]);
 
   const {
-    data: invoices = [],
+    data: pagedData,
     isLoading,
     isFetching,
     error,
     refetch,
   } = useInvoices(serverFilters);
+
+  const invoices = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+  const totalPages = pagedData?.totalPages ?? 1;
 
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
@@ -191,7 +203,7 @@ export const InvoicesPage: React.FC = () => {
         <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
             <FileText className="h-5 w-5 text-blue-600" />
-            <span>Comprobantes Emitidos ({invoices.length})</span>
+            <span>Comprobantes Emitidos ({totalCount})</span>
           </CardTitle>
           {isFetching && (
             <span className="text-xs text-slate-400 font-medium animate-pulse">
@@ -311,6 +323,13 @@ export const InvoicesPage: React.FC = () => {
               </Table>
             </div>
           )}
+          <Pagination
+            currentPage={pageNumber}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={setPageNumber}
+          />
         </CardContent>
       </Card>
 

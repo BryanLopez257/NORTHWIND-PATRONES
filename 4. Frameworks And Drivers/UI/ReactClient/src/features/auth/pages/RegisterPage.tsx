@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff, Check, X } from 'lucide-react';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -17,6 +17,7 @@ import {
 } from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { registerSchema, RegisterFormData } from '../schemas';
+import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export const RegisterPage: React.FC = () => {
     handleSubmit,
     setValue,
     setError,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     mode: 'onTouched',
@@ -45,6 +47,9 @@ export const RegisterPage: React.FC = () => {
       confirmPassword: '',
     },
   });
+
+  const passwordValue = watch('password') || '';
+  const confirmPasswordValue = watch('confirmPassword') || '';
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
@@ -238,63 +243,80 @@ export const RegisterPage: React.FC = () => {
             </div>
 
             {/* Contraseñas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Input
-                  id="reg-password"
-                  label="Contraseña *"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
-                  maxLength={100}
-                  autoComplete="new-password"
-                  error={errors.password?.message}
-                  onKeyDown={(e) => {
-                    blockWhitespace(e);
-                    blockEmojis(e);
-                  }}
-                  rightElement={
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="focus:outline-none"
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                  {...register('password')}
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis ni espacios.</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Input
+                    id="reg-password"
+                    label="Contraseña *"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Mínimo 6 caracteres"
+                    maxLength={100}
+                    autoComplete="new-password"
+                    error={errors.password?.message}
+                    onKeyDown={(e) => {
+                      blockWhitespace(e);
+                      blockEmojis(e);
+                    }}
+                    rightElement={
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="focus:outline-none"
+                        aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                    {...register('password')}
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    id="reg-confirm-password"
+                    label="Confirmar contraseña *"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Repite la contraseña"
+                    maxLength={100}
+                    autoComplete="new-password"
+                    error={errors.confirmPassword?.message}
+                    onKeyDown={(e) => {
+                      blockWhitespace(e);
+                      blockEmojis(e);
+                    }}
+                    rightElement={
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="focus:outline-none"
+                        aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                    {...register('confirmPassword')}
+                  />
+                  {confirmPasswordValue.length > 0 && (
+                    <div className="mt-1.5 text-[11px] font-medium flex items-center gap-1">
+                      {passwordValue && passwordValue === confirmPasswordValue ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          <Check className="h-3.5 w-3.5" /> Las contraseñas coinciden
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 flex items-center gap-1">
+                          <X className="h-3.5 w-3.5 text-amber-600" /> Las contraseñas no coinciden
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <Input
-                  id="reg-confirm-password"
-                  label="Confirmar contraseña *"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Repite la contraseña"
-                  maxLength={100}
-                  autoComplete="new-password"
-                  error={errors.confirmPassword?.message}
-                  onKeyDown={(e) => {
-                    blockWhitespace(e);
-                    blockEmojis(e);
-                  }}
-                  rightElement={
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="focus:outline-none"
-                      aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                  {...register('confirmPassword')}
-                />
-              </div>
+              {/* Medidor de fortaleza y validaciones faltantes en tiempo real */}
+              <PasswordStrengthIndicator password={passwordValue} />
             </div>
 
             <Button

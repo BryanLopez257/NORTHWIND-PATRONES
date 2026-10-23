@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2, ArrowLeftRight } from 'lucide-react';
 import { useProducts } from '@/features/products/hooks/useProducts';
-import { ProductDto } from '@/features/products/types';
+import { ProductDto, ProductFilters } from '@/features/products/types';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
+import { Pagination } from '@/shared/ui';
+import { useDebounce } from '@/shared/utils/useDebounce';
 
 export interface ProductSelectorModalProps {
   open: boolean;
@@ -28,34 +30,30 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCriteria, setSearchCriteria] = useState<'all' | 'name' | 'id'>('all');
   const [onlyInStock, setOnlyInStock] = useState(true);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const pageSize = 10;
 
-  const { data: products = [], isLoading, error } = useProducts();
+  const debouncedSearchTerm = useDebounce(searchTerm, 350);
+
+  const serverFilters: ProductFilters = useMemo(() => {
+    return {
+      searchTerm: debouncedSearchTerm.trim() || undefined,
+      stockFilter: onlyInStock ? 1 : undefined,
+      pageNumber,
+      pageSize,
+    };
+  }, [debouncedSearchTerm, onlyInStock, pageNumber, pageSize]);
+
+  React.useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearchTerm, onlyInStock, searchCriteria]);
+
+  const { data: pagedData, isLoading, error } = useProducts(serverFilters);
+  const products = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+  const totalPages = pagedData?.totalPages ?? 1;
 
   const isReplaceMode = Boolean(replacingProductId);
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      // Filtro de existencias
-      if (onlyInStock && p.unitsInStock <= 0) {
-        return false;
-      }
-
-      // Filtro de texto por criterio
-      if (searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        // ID: prefijo (evita que "1" coincida con 21, 31, 41...); nombre: contención
-        if (searchCriteria === 'id') {
-          return p.id.toString().startsWith(term);
-        }
-        if (searchCriteria === 'name') {
-          return p.name.toLowerCase().includes(term);
-        }
-        return p.name.toLowerCase().includes(term) || p.id.toString().startsWith(term);
-      }
-
-      return true;
-    });
-  }, [products, onlyInStock, searchTerm, searchCriteria]);
 
   const handleSelect = (product: ProductDto) => {
     if (product.unitsInStock <= 0) {
@@ -166,7 +164,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
               <AlertCircle className="h-5 w-5" />
               <span>Error al obtener productos. Por favor intente nuevamente.</span>
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No se encontraron productos coincidentes con los filtros aplicados.
             </div>
@@ -182,7 +180,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => {
+                {products.map((product) => {
                   const isCurrentReplacingProduct = isReplaceMode && product.id === replacingProductId;
                   const isAlreadyInCart = selectedProductIds.includes(product.id);
                   const isOutOfStock = product.unitsInStock <= 0;
@@ -295,12 +293,19 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
               </TableBody>
             </Table>
           )}
+          <Pagination
+            currentPage={pageNumber}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={setPageNumber}
+          />
         </div>
 
         {/* Footer */}
         <div className="flex justify-between items-center pt-2">
           <span className="text-xs text-slate-500">
-            Mostrando {filteredProducts.length} de {products.length} productos
+            Total en catálogo: {totalCount} productos
           </span>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar Catálogo

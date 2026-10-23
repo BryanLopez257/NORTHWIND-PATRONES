@@ -21,6 +21,8 @@ public static class InvoicesController
         string? searchTerm,
         string? invoiceNumber,
         string? customerName,
+        int? pageNumber,
+        int? pageSize,
         IGetInvoicesInputPort inputPort,
         GetInvoicesPresenter presenter)
     {
@@ -28,7 +30,9 @@ public static class InvoicesController
         {
             SearchTerm = searchTerm,
             InvoiceNumber = invoiceNumber,
-            CustomerName = customerName
+            CustomerName = customerName,
+            PageNumber = pageNumber ?? 1,
+            PageSize = pageSize ?? 10
         };
 
         await inputPort.Handle(filter);

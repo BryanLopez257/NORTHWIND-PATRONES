@@ -1,6 +1,6 @@
 namespace NorthWind.Sales.Entities.Dtos.Customers;
 
-public class CustomerFilterDto
+public class CustomerFilterDto : PaginationFilterDto
 {
     public string? SearchTerm { get; set; }
     /// <summary>

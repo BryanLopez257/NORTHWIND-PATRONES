@@ -1,3 +1,7 @@
+import { PagedResult } from '@/shared/types/pagination';
+
+export type { PagedResult };
+
 export interface CustomerDto {
   id: string;
   name: string;
@@ -49,4 +53,6 @@ export interface CustomerFilters {
   orderBy?: string; // "name", "id", "balance", "identification"
   ascending?: boolean;
   criteria?: string; // "all", "identification", "name", "lastname", "businessname", "tradename", "id"
+  pageNumber?: number;
+  pageSize?: number;
 }

@@ -27,6 +27,7 @@ import {
   TableCell,
 } from '@/shared/ui/Table';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui/Card';
+import { Pagination } from '@/shared/ui';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import { useCustomers, useDeleteCustomer } from '../hooks/useCustomers';
 import { CustomerDto, CustomerFilters } from '../types';
@@ -45,6 +46,8 @@ export const CustomersPage: React.FC = () => {
   const [maxBalanceInput, setMaxBalanceInput] = useState<string>('');
   const [orderBy, setOrderBy] = useState<'name' | 'id' | 'balance'>('name');
   const [ascending, setAscending] = useState<boolean>(true);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const pageSize = 10;
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -68,9 +71,18 @@ export const CustomersPage: React.FC = () => {
     maxBalance: parsedMaxBalance,
     orderBy,
     ascending,
+    pageNumber,
+    pageSize,
   };
 
-  const { data: customers = [], isLoading, isError, error, refetch, isFetching } = useCustomers(filters);
+  React.useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearchTerm, searchCriteria, customerTypeFilter, balanceFilter, parsedMinBalance, parsedMaxBalance, orderBy, ascending]);
+
+  const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useCustomers(filters);
+  const customers = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+  const totalPages = pagedData?.totalPages ?? 1;
 
   const handleOpenCreate = () => {
     setSelectedCustomer(null);
@@ -91,6 +103,7 @@ export const CustomersPage: React.FC = () => {
     setMaxBalanceInput('');
     setOrderBy('name');
     setAscending(true);
+    setPageNumber(1);
   };
 
   const getSearchPlaceholder = () => {
@@ -428,7 +441,7 @@ export const CustomersPage: React.FC = () => {
         <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold text-slate-800">
-              Listado de Clientes ({customers.length} registros)
+              Listado de Clientes ({totalCount} registros)
             </CardTitle>
             <CardDescription className="text-xs">
               Directorio comercial clasificado con control de crédito
@@ -570,6 +583,13 @@ export const CustomersPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            currentPage={pageNumber}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={setPageNumber}
+          />
         </CardContent>
       </Card>
 

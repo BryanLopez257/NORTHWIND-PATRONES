@@ -24,9 +24,9 @@ public class GetInvoiceByIdPresenter : IGetInvoiceByIdOutputPort
 
 public class GetInvoicesPresenter : IGetInvoicesOutputPort
 {
-    public IEnumerable<InvoiceResponseDto> Invoices { get; private set; }
+    public PagedResultDto<InvoiceResponseDto> Invoices { get; private set; }
 
-    public Task Handle(IEnumerable<InvoiceResponseDto> invoices)
+    public Task Handle(PagedResultDto<InvoiceResponseDto> invoices)
     {
         Invoices = invoices;
         return Task.CompletedTask;

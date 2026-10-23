@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User, X } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
-import { CustomerDto } from '@/features/customers/types';
+import { CustomerDto, CustomerFilters } from '@/features/customers/types';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
+import { Pagination } from '@/shared/ui';
+import { useDebounce } from '@/shared/utils/useDebounce';
 import { cn } from '@/shared/utils/cn';
 
 export interface CustomerSelectorModalProps {
@@ -27,77 +29,31 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteriaType>('all');
   const [typeFilter, setTypeFilter] = useState<'Todos' | 'Persona Natural' | 'Empresa'>('Todos');
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const pageSize = 10;
   const [blockedWarning, setBlockedWarning] = useState<string | null>(null);
 
-  // Pasamos los filtros al hook del backend si es necesario, o filtramos en memoria
-  const { data: customers = [], isLoading, error } = useCustomers();
+  const debouncedSearchTerm = useDebounce(searchTerm, 350);
 
-  // Contadores reactivos
-  const counts = useMemo(() => {
-    const todos = customers.length;
-    const personas = customers.filter(
-      (c) => c.customerType === 'Persona Natural' || c.customerType === 1 || String(c.customerType) === '1'
-    ).length;
-    const empresas = customers.filter(
-      (c) => c.customerType === 'Empresa' || c.customerType === 2 || String(c.customerType) === '2'
-    ).length;
-    return { todos, personas, empresas };
-  }, [customers]);
+  // Mapeo de filtros al backend para búsqueda y paginación en servidor
+  const serverFilters: CustomerFilters = useMemo(() => {
+    return {
+      searchTerm: debouncedSearchTerm.trim() || undefined,
+      criteria: searchCriteria !== 'all' ? searchCriteria : undefined,
+      customerType: typeFilter !== 'Todos' ? typeFilter : undefined,
+      pageNumber,
+      pageSize,
+    };
+  }, [debouncedSearchTerm, searchCriteria, typeFilter, pageNumber, pageSize]);
 
-  // Filtrado reactivo en memoria con reglas de segregación estrictas
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
-      const isLegal = c.customerType === 'Empresa' || c.customerType === 2 || String(c.customerType) === '2';
-      const isNatural = !isLegal;
+  React.useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearchTerm, searchCriteria, typeFilter]);
 
-      // Segmentación por botón superior
-      if (typeFilter === 'Persona Natural' && !isNatural) return false;
-      if (typeFilter === 'Empresa' && !isLegal) return false;
-
-      // Segregación estricta por criterio de búsqueda
-      if (searchCriteria === 'name' || searchCriteria === 'lastname') {
-        if (!isNatural) return false; // Nunca devolver jurídicas
-      }
-      if (searchCriteria === 'businessname' || searchCriteria === 'tradename') {
-        if (!isLegal) return false; // Nunca devolver naturales
-      }
-
-      if (!searchTerm.trim()) return true;
-
-      const term = searchTerm.trim().toLowerCase();
-
-      switch (searchCriteria) {
-        case 'id':
-          return c.id.toLowerCase().startsWith(term);
-        case 'identification':
-          return (c.identification || '').toLowerCase().startsWith(term);
-        case 'name':
-          return (
-            (c.firstName || '').toLowerCase().startsWith(term) ||
-            (c.secondName || '').toLowerCase().startsWith(term) ||
-            (c.lastName || '').toLowerCase().startsWith(term) ||
-            (c.secondLastName || '').toLowerCase().startsWith(term) ||
-            c.name.toLowerCase().includes(term)
-          );
-        case 'lastname':
-          return (c.lastName || '').toLowerCase().startsWith(term);
-        // Nombres descriptivos: contención (palabras intermedias), alineado con el backend
-        case 'businessname':
-          return (c.businessName || '').toLowerCase().includes(term);
-        case 'tradename':
-          return (c.tradeName || '').toLowerCase().includes(term);
-        case 'all':
-        default:
-          return (
-            c.id.toLowerCase().startsWith(term) ||
-            (c.identification || '').toLowerCase().startsWith(term) ||
-            c.name.toLowerCase().includes(term) ||
-            (c.tradeName || '').toLowerCase().includes(term) ||
-            (c.businessName || '').toLowerCase().includes(term)
-          );
-      }
-    });
-  }, [customers, typeFilter, searchTerm, searchCriteria]);
+  const { data: pagedData, isLoading, error } = useCustomers(serverFilters);
+  const customers = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+  const totalPages = pagedData?.totalPages ?? 1;
 
   const handleSelect = (customer: CustomerDto) => {
     if (customer.currentBalance > 0) {
@@ -189,7 +145,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               )}
             >
               <Users className="h-3.5 w-3.5" />
-              <span>Todos ({counts.todos})</span>
+              <span>Todos</span>
             </button>
 
             <button
@@ -203,7 +159,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               )}
             >
               <User className="h-3.5 w-3.5" />
-              <span>Personas Naturales ({counts.personas})</span>
+              <span>Personas Naturales</span>
             </button>
 
             <button
@@ -217,7 +173,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               )}
             >
               <Building2 className="h-3.5 w-3.5" />
-              <span>Empresas ({counts.empresas})</span>
+              <span>Empresas</span>
             </button>
           </div>
 
@@ -278,24 +234,25 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               <AlertCircle className="h-5 w-5" />
               <span>Error al obtener clientes. Por favor intente nuevamente.</span>
             </div>
-          ) : filteredCustomers.length === 0 ? (
+          ) : customers.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No se encontraron clientes coincidentes con los criterios de búsqueda.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-20">ID</TableHead>
-                  <TableHead>Nombre / Razón Social</TableHead>
-                  <TableHead>Identificación</TableHead>
-                  <TableHead>Tipo de Cliente</TableHead>
-                  <TableHead className="text-right">Saldo Actual</TableHead>
-                  <TableHead className="text-right w-44">Acción</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map((customer) => {
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20">ID</TableHead>
+                    <TableHead>Nombre / Razón Social</TableHead>
+                    <TableHead>Identificación</TableHead>
+                    <TableHead>Tipo de Cliente</TableHead>
+                    <TableHead className="text-right">Saldo Actual</TableHead>
+                    <TableHead className="text-right w-44">Acción</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customers.map((customer) => {
                   const isBlocked = customer.currentBalance > 0;
                   const isCurrentlySelected = selectedCustomerId === customer.id;
                   const isLegal = customer.customerType === 'Empresa' || customer.customerType === 2 || String(customer.customerType) === '2';
@@ -387,6 +344,14 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                 })}
               </TableBody>
             </Table>
+            <Pagination
+              currentPage={pageNumber}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPageNumber}
+            />
+          </>
           )}
         </div>
       </div>

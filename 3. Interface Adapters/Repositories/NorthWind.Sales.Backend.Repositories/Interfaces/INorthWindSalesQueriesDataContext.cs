@@ -12,4 +12,5 @@ public interface INorthWindSalesQueriesDataContext
     Task<ReturnType> FirstOrDefaultAsync<ReturnType>(IQueryable<ReturnType> queryable);
     Task<IEnumerable<ReturnType>> ToListAsync<ReturnType>(IQueryable<ReturnType> queryable);
     Task<bool> AnyAsync<ReturnType>(IQueryable<ReturnType> queryable);
+    Task<int> CountAsync<ReturnType>(IQueryable<ReturnType> queryable);
 }

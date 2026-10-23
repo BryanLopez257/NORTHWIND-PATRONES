@@ -13,3 +13,4 @@ global using NorthWind.Sales.Backend.Presenters.Invoices;
 global using NorthWind.Sales.Entities.Dtos.Products;
 global using NorthWind.Sales.Entities.Dtos.Customers;
 global using NorthWind.Sales.Entities.Dtos.Invoices;
+global using NorthWind.Sales.Entities.Dtos.Common;

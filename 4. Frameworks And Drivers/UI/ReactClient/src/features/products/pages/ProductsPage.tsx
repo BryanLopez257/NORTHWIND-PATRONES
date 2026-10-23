@@ -25,6 +25,7 @@ import {
   TableCell,
 } from '@/shared/ui/Table';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui/Card';
+import { Pagination } from '@/shared/ui';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import { useProducts, useDeleteProduct } from '../hooks/useProducts';
 import { ProductDto, ProductFilters } from '../types';
@@ -41,6 +42,8 @@ export const ProductsPage: React.FC = () => {
   const [maxPriceInput, setMaxPriceInput] = useState<string>('');
   const [orderBy, setOrderBy] = useState<'name' | 'price' | 'stock'>('name');
   const [ascending, setAscending] = useState<boolean>(true);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const pageSize = 10;
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,9 +65,18 @@ export const ProductsPage: React.FC = () => {
     maxPrice: parsedMaxPrice,
     orderBy,
     ascending,
+    pageNumber,
+    pageSize,
   };
 
-  const { data: products = [], isLoading, isError, error, refetch, isFetching } = useProducts(filters);
+  React.useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearchTerm, stockFilter, parsedMinPrice, parsedMaxPrice, orderBy, ascending]);
+
+  const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useProducts(filters);
+  const products = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+  const totalPages = pagedData?.totalPages ?? 1;
 
   const handleOpenCreate = () => {
     setSelectedProduct(null);
@@ -83,6 +95,7 @@ export const ProductsPage: React.FC = () => {
     setMaxPriceInput('');
     setOrderBy('name');
     setAscending(true);
+    setPageNumber(1);
   };
 
   const handleConfirmDelete = async () => {
@@ -328,7 +341,7 @@ export const ProductsPage: React.FC = () => {
         <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold text-slate-800">
-              Listado de Productos ({products.length} registros)
+              Listado de Productos ({totalCount} registros)
             </CardTitle>
             <CardDescription className="text-xs">
               Artículos disponibles para venta y facturación
@@ -446,6 +459,13 @@ export const ProductsPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            currentPage={pageNumber}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={setPageNumber}
+          />
         </CardContent>
       </Card>
 

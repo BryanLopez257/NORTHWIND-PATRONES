@@ -1,3 +1,7 @@
+import { PagedResult } from '@/shared/types/pagination';
+
+export type { PagedResult };
+
 export interface ProductDto {
   id: number;
   name: string;
@@ -25,4 +29,6 @@ export interface ProductFilters {
   stockFilter?: number; // 0 = Todos, 1 = En Stock (> 0), 2 = Stock Bajo (<= 10 y > 0), 3 = Agotado (== 0)
   orderBy?: string; // "name", "price", "stock"
   ascending?: boolean;
+  pageNumber?: number;
+  pageSize?: number;
 }

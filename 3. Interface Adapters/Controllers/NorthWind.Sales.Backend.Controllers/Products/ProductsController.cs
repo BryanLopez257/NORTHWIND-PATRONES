@@ -30,6 +30,8 @@ public static class ProductsController
         int? stockFilter,
         string? orderBy,
         bool? ascending,
+        int? pageNumber,
+        int? pageSize,
         IGetProductsInputPort inputPort,
         GetProductsPresenter presenter)
     {
@@ -40,7 +42,9 @@ public static class ProductsController
             MaxPrice = maxPrice,
             StockFilter = stockFilter,
             OrderBy = orderBy ?? "name",
-            Ascending = ascending ?? true
+            Ascending = ascending ?? true,
+            PageNumber = pageNumber ?? 1,
+            PageSize = pageSize ?? 10
         };
 
         await inputPort.Handle(filter);

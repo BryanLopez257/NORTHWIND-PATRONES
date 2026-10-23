@@ -132,7 +132,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5',
                 typeFilter === 'Todos'
-                  ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               )}
             >
@@ -146,7 +146,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5',
                 typeFilter === 'Persona Natural'
-                  ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               )}
             >
@@ -160,7 +160,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5',
                 typeFilter === 'Empresa'
-                  ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               )}
             >
@@ -174,7 +174,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
             <select
               value={searchCriteria}
               onChange={(e) => setSearchCriteria(e.target.value as 'all' | 'name' | 'id')}
-              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">🔍 Todos</option>
               <option value="name">👤 Nombre</option>
@@ -240,11 +240,11 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                     <TableRow
                       key={customer.id}
                       className={cn(
-                        isCurrentlySelected && 'bg-sky-50/50',
+                        isCurrentlySelected && 'bg-blue-50/50',
                         isBlocked && 'bg-rose-50/20'
                       )}
                     >
-                      <TableCell className="font-mono font-bold text-xs text-sky-700">
+                      <TableCell className="font-mono font-bold text-xs text-blue-700">
                         {customer.id}
                       </TableCell>
                       <TableCell>
@@ -302,7 +302,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                             type="button"
                             size="sm"
                             onClick={() => handleSelect(customer)}
-                            className="h-8 px-3 text-xs bg-sky-600 hover:bg-sky-700 text-white flex items-center space-x-1 ml-auto"
+                            className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-1 ml-auto"
                           >
                             <Check className="h-3.5 w-3.5" />
                             <span>{isCurrentlySelected ? 'Seleccionado' : 'Seleccionar'}</span>

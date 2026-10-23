@@ -1,6 +1,7 @@
 export interface UserProfile {
   email: string;
   name: string;
+  role: string;
 }
 
 export interface DecodedTokenPayload {
@@ -9,6 +10,9 @@ export interface DecodedTokenPayload {
   FullName?: string;
   unique_name?: string;
   sub?: string;
+  role?: string | string[];
+  Role?: string | string[];
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'?: string | string[];
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'?: string;
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'?: string;
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'?: string;
@@ -38,13 +42,10 @@ export function parseJwt(token: string): DecodedTokenPayload | null {
 export function extractClaims(token: string): UserProfile {
   const payload = parseJwt(token);
   if (!payload) {
-    return { email: '', name: '' };
+    return { email: '', name: '', role: 'Usuario' };
   }
 
   // 1. Email detection:
-  // In ASP.NET Core Identity with JwtService.cs:
-  // new Claim(ClaimTypes.Name, userDto.Email) maps to:
-  // "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
   const email =
     payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
     payload.email ||
@@ -54,7 +55,6 @@ export function extractClaims(token: string): UserProfile {
     '';
 
   // 2. Name detection:
-  // Backend explicitly injects: new Claim("FullName", $"{userDto.FirstName} {userDto.LastName}")
   const msGivenName = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
   const msSurname = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
   const combinedMsName = [msGivenName, msSurname].filter(Boolean).join(' ');
@@ -72,7 +72,20 @@ export function extractClaims(token: string): UserProfile {
     name = 'Usuario';
   }
 
-  return { email, name };
+  // 3. Role detection:
+  const rawRole =
+    payload.role ||
+    payload.Role ||
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+
+  let role = 'Vendedor';
+  if (Array.isArray(rawRole)) {
+    role = rawRole.join(', ');
+  } else if (typeof rawRole === 'string' && rawRole.trim()) {
+    role = rawRole.trim();
+  }
+
+  return { email, name, role };
 }
 
 export function isTokenExpired(token: string): boolean {

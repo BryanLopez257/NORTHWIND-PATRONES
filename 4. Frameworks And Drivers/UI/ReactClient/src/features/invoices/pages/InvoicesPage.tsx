@@ -94,7 +94,7 @@ export const InvoicesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center space-x-2">
-            <Receipt className="h-6 w-6 text-sky-600" />
+            <Receipt className="h-6 w-6 text-blue-600" />
             <span>Historial de Facturas y Comprobantes</span>
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -104,7 +104,7 @@ export const InvoicesPage: React.FC = () => {
 
         <div className="flex items-center space-x-2">
           <Link to="/createorder">
-            <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white shadow-xs">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-xs">
               <ShoppingCart className="h-4 w-4 mr-1.5" />
               <span>Nueva Orden</span>
             </Button>
@@ -187,7 +187,7 @@ export const InvoicesPage: React.FC = () => {
       <Card className="border-slate-200 shadow-xs">
         <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
-            <FileText className="h-5 w-5 text-sky-600" />
+            <FileText className="h-5 w-5 text-blue-600" />
             <span>Comprobantes Emitidos ({filteredInvoices.length})</span>
           </CardTitle>
           {isFetching && (
@@ -212,7 +212,7 @@ export const InvoicesPage: React.FC = () => {
                   : 'Las órdenes de venta confirmadas se reflejarán automáticamente en esta vista.'}
               </p>
               <Link to="/createorder">
-                <Button size="sm" variant="outline" className="mt-2 text-sky-700 border-sky-200">
+                <Button size="sm" variant="outline" className="mt-2 text-blue-700 border-blue-200">
                   <ShoppingCart className="h-4 w-4 mr-1.5" />
                   <span>Emitir Primera Orden</span>
                 </Button>
@@ -237,7 +237,7 @@ export const InvoicesPage: React.FC = () => {
                 <TableBody>
                   {filteredInvoices.map((inv) => (
                     <TableRow key={inv.id}>
-                      <TableCell className="font-mono text-xs font-bold text-sky-700">
+                      <TableCell className="font-mono text-xs font-bold text-blue-700">
                         {inv.invoiceNumber || `FAC-${inv.id}`}
                       </TableCell>
                       <TableCell className="text-xs text-slate-600">
@@ -262,7 +262,7 @@ export const InvoicesPage: React.FC = () => {
                             {inv.customerDocument || 'S/D'}
                           </span>
                           {inv.customerId && (
-                            <span className="font-mono text-[11px] text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded w-fit">
+                            <span className="font-mono text-[11px] text-blue-700 font-semibold bg-blue-50 px-1.5 py-0.5 rounded w-fit">
                               ID: {inv.customerId}
                             </span>
                           )}
@@ -294,7 +294,7 @@ export const InvoicesPage: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleOpenVoucher(inv)}
-                          className="h-8 px-2.5 text-xs text-sky-700 border-sky-200 hover:bg-sky-50 flex items-center space-x-1.5 mx-auto"
+                          className="h-8 px-2.5 text-xs text-blue-700 border-blue-200 hover:bg-blue-50 flex items-center space-x-1.5 mx-auto"
                           title="Ver comprobante e imprimir"
                         >
                           <Eye className="h-3.5 w-3.5" />

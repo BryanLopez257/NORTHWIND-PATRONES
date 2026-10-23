@@ -8,6 +8,7 @@ import { CreateOrderPage } from '@/features/orders/pages/CreateOrderPage';
 import { InvoicesPage } from '@/features/invoices/pages/InvoicesPage';
 import { CustomersPage } from '@/features/customers/pages/CustomersPage';
 import { ProductsPage } from '@/features/products/pages/ProductsPage';
+import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 
 // Componente para manejar la ruta histórica /user/logout de Blazor
@@ -55,11 +56,16 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/createorder" replace />,
+        element: <Navigate to="/create-order" replace />,
       },
       {
-        path: 'createorder',
+        path: 'create-order',
         element: <CreateOrderPage />,
+      },
+      // Compatibilidad con la ruta anterior
+      {
+        path: 'createorder',
+        element: <Navigate to="/create-order" replace />,
       },
       {
         path: 'invoices',
@@ -73,13 +79,17 @@ const router = createBrowserRouter([
         path: 'products',
         element: <ProductsPage />,
       },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
+      },
     ],
   },
 
   // Fallback route
   {
     path: '*',
-    element: <Navigate to="/createorder" replace />,
+    element: <Navigate to="/create-order" replace />,
   },
 ]);
 

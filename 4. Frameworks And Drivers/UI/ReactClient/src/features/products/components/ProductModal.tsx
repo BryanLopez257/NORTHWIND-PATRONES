@@ -5,6 +5,12 @@ import { Dialog } from '@/shared/ui/Dialog';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
+import {
+  allowOnlyDigits,
+  blockEmojis,
+  sanitizeDigits,
+  sanitizeRejectEmojis,
+} from '@/core/utils/inputFilters';
 import { ProductDto } from '../types';
 import { productSchema, ProductFormData } from '../schemas';
 import { useCreateProduct, useUpdateProduct } from '../hooks/useProducts';
@@ -35,6 +41,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setValue,
     formState: { errors },
   } = useForm<ProductFormData>({
+    mode: 'onTouched',
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
@@ -132,16 +139,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           placeholder="Chai, Chang, Queso Cabrales..."
           maxLength={40}
           error={errors.name?.message}
+          onKeyDown={blockEmojis}
           {...register('name', {
             onChange: (e) => {
-              if (e.target.value.length > 40) {
-                const clean = e.target.value.slice(0, 40);
-                e.target.value = clean;
-                setValue('name', clean, { shouldValidate: true });
-              }
+              const clean = sanitizeRejectEmojis(e.target.value).slice(0, 40);
+              e.target.value = clean;
+              setValue('name', clean, { shouldValidate: true });
             },
           })}
         />
+        <p className="text-[11px] text-slate-400 -mt-2">Máx. 40 caracteres. Sin emojis ni caracteres suplementarios.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
@@ -152,7 +159,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             min="0"
             placeholder="0"
             error={errors.unitsInStock?.message}
-            {...register('unitsInStock')}
+            onKeyDown={allowOnlyDigits}
+            {...register('unitsInStock', {
+              onChange: (e) => {
+                const clean = sanitizeDigits(e.target.value);
+                e.target.value = clean;
+                setValue('unitsInStock', Number(clean) || 0, { shouldValidate: true });
+              },
+            })}
           />
 
           <Input
@@ -176,7 +190,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           >
             Cancelar
           </Button>
-          <Button type="submit" isLoading={isSubmitting}>
+          <Button
+            type="submit"
+            isLoading={isSubmitting}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             {isEditing ? 'Guardar Cambios' : 'Añadir Producto'}
           </Button>
         </div>

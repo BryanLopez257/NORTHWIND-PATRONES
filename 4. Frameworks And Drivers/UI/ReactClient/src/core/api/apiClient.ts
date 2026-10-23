@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../auth/useAuthStore';
+import { ApiConfig } from '../config/apiConfig';
 
 export interface ValidationErrorItem {
   propertyName?: string;
@@ -139,10 +140,15 @@ export function getErrorMessage(error: unknown, defaultMessage = 'Ha ocurrido un
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: ApiConfig.baseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Sincronizar dinámicamente cuando el usuario actualice la URL en /settings
+ApiConfig.subscribe((newUrl) => {
+  apiClient.defaults.baseURL = newUrl;
 });
 
 // Request interceptor: Inject Bearer token from localStorage

@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
-import { allowOnlyLettersAndSpaces, sanitizeLettersAndSpaces } from '@/core/utils/inputFilters';
+import {
+  allowOnlyLettersAndSpaces,
+  sanitizeLettersAndSpaces,
+  allowEmailChars,
+  sanitizeEmailChars,
+  blockWhitespace,
+  blockEmojis,
+} from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { registerSchema, RegisterFormData } from '../schemas';
 
@@ -16,15 +23,17 @@ export const RegisterPage: React.FC = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setError,
     setValue,
-    reset,
+    setError,
     formState: { errors },
   } = useForm<RegisterFormData>({
+    mode: 'onTouched',
     resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: '',
@@ -41,40 +50,38 @@ export const RegisterPage: React.FC = () => {
     setServerError(null);
     setSuccessMessage(null);
     setIsLoading(true);
+
     try {
       await authService.register({
+        firstName: data.firstName.trim(),
+        secondName: data.secondName?.trim() || undefined,
+        lastName: data.lastName.trim(),
+        secondLastName: data.secondLastName?.trim() || undefined,
         email: data.email.trim(),
         password: data.password,
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        secondName: data.secondName?.trim() || undefined,
-        secondLastName: data.secondLastName?.trim() || undefined,
       });
 
-      setSuccessMessage('Usuario registrado exitosamente. Ya puede iniciar sesión con sus credenciales.');
-      reset();
-
-      // Redirigir suavemente tras breve pausa para permitir lectura del mensaje
+      setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo a inicio de sesión...');
       setTimeout(() => {
-        navigate('/login', { state: { registered: true }, replace: true });
-      }, 2000);
+        navigate('/login', { state: { registered: true } });
+      }, 1500);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         let hasMappedField = false;
         if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-          const keys: Array<keyof RegisterFormData> = [
+          const fieldKeys: Array<keyof RegisterFormData> = [
             'firstName',
             'secondName',
             'lastName',
             'secondLastName',
             'email',
             'password',
+            'confirmPassword',
           ];
 
-          for (const key of keys) {
-            const fieldError = err.fieldErrors[key] || err.fieldErrors[key.charAt(0).toUpperCase() + key.slice(1)];
-            if (fieldError) {
-              setError(key, { message: fieldError });
+          for (const key of fieldKeys) {
+            if (err.fieldErrors[key]) {
+              setError(key, { message: err.fieldErrors[key] });
               hasMappedField = true;
             }
           }
@@ -92,10 +99,10 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-sky-50 to-slate-200">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200">
       <Card className="w-full max-w-xl shadow-xl border-slate-200/80 bg-white/95 backdrop-blur-xs my-8">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto bg-gradient-to-r from-sky-600 to-indigo-600 text-white p-3 rounded-2xl w-fit shadow-md mb-2">
+          <div className="mx-auto bg-blue-600 text-white p-3 rounded-2xl w-fit shadow-md mb-2">
             <UserPlus className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
@@ -129,19 +136,19 @@ export const RegisterPage: React.FC = () => {
                   id="reg-first-name"
                   label="Primer Nombre *"
                   placeholder="Ej. Juan"
-                  maxLength={50}
+                  maxLength={30}
                   autoComplete="given-name"
                   error={errors.firstName?.message}
                   onKeyDown={allowOnlyLettersAndSpaces}
                   {...register('firstName', {
                     onChange: (e) => {
-                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
                       setValue('firstName', clean, { shouldValidate: true });
                     },
                   })}
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 50 caracteres). Sin emojis.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 30 chars). Sin emojis.</p>
               </div>
 
               <div>
@@ -149,19 +156,19 @@ export const RegisterPage: React.FC = () => {
                   id="reg-second-name"
                   label="Segundo Nombre (Opcional)"
                   placeholder="Ej. Carlos (opcional)"
-                  maxLength={50}
+                  maxLength={30}
                   autoComplete="additional-name"
                   error={errors.secondName?.message}
                   onKeyDown={allowOnlyLettersAndSpaces}
                   {...register('secondName', {
                     onChange: (e) => {
-                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
                       setValue('secondName', clean, { shouldValidate: true });
                     },
                   })}
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Opcional. 2 a 50 caracteres. Sin emojis.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Opcional. 2 a 30 caracteres. Sin emojis.</p>
               </div>
             </div>
 
@@ -172,19 +179,19 @@ export const RegisterPage: React.FC = () => {
                   id="reg-last-name"
                   label="Primer Apellido *"
                   placeholder="Ej. Pérez"
-                  maxLength={50}
+                  maxLength={30}
                   autoComplete="family-name"
                   error={errors.lastName?.message}
                   onKeyDown={allowOnlyLettersAndSpaces}
                   {...register('lastName', {
                     onChange: (e) => {
-                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
                       setValue('lastName', clean, { shouldValidate: true });
                     },
                   })}
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 50 caracteres). Sin emojis.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 30 chars). Sin emojis.</p>
               </div>
 
               <div>
@@ -192,19 +199,19 @@ export const RegisterPage: React.FC = () => {
                   id="reg-second-last-name"
                   label="Segundo Apellido (Opcional)"
                   placeholder="Ej. Gómez (opcional)"
-                  maxLength={50}
+                  maxLength={30}
                   autoComplete="family-name"
                   error={errors.secondLastName?.message}
                   onKeyDown={allowOnlyLettersAndSpaces}
                   {...register('secondLastName', {
                     onChange: (e) => {
-                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 50);
+                      const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
                       setValue('secondLastName', clean, { shouldValidate: true });
                     },
                   })}
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Opcional. 2 a 50 caracteres. Sin emojis.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Opcional. 2 a 30 caracteres. Sin emojis.</p>
               </div>
             </div>
 
@@ -212,13 +219,20 @@ export const RegisterPage: React.FC = () => {
             <div>
               <Input
                 id="reg-email"
-                label="Correo *"
-                type="email"
+                label="Correo electrónico *"
+                type="text"
                 placeholder="ejemplo@northwind.com"
                 maxLength={100}
                 autoComplete="email"
                 error={errors.email?.message}
-                {...register('email')}
+                onKeyDown={allowEmailChars}
+                {...register('email', {
+                  onChange: (e) => {
+                    const clean = sanitizeEmailChars(e.target.value).slice(0, 100);
+                    e.target.value = clean;
+                    setValue('email', clean, { shouldValidate: true });
+                  },
+                })}
               />
               <p className="text-[11px] text-slate-500 mt-1">Solo letras, números, punto (.) y arroba (@). Máx. 100 caracteres.</p>
             </div>
@@ -229,42 +243,73 @@ export const RegisterPage: React.FC = () => {
                 <Input
                   id="reg-password"
                   label="Contraseña *"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Mínimo 6 caracteres"
                   maxLength={100}
                   autoComplete="new-password"
                   error={errors.password?.message}
+                  onKeyDown={(e) => {
+                    blockWhitespace(e);
+                    blockEmojis(e);
+                  }}
+                  rightElement={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="focus:outline-none"
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
                   {...register('password')}
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis ni espacios.</p>
               </div>
 
               <div>
                 <Input
                   id="reg-confirm-password"
                   label="Confirmar contraseña *"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Repite la contraseña"
                   maxLength={100}
                   autoComplete="new-password"
                   error={errors.confirmPassword?.message}
+                  onKeyDown={(e) => {
+                    blockWhitespace(e);
+                    blockEmojis(e);
+                  }}
+                  rightElement={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="focus:outline-none"
+                      aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
                   {...register('confirmPassword')}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-3" isLoading={isLoading}>
+            <Button
+              type="submit"
+              className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+              isLoading={isLoading}
+            >
               <UserPlus className="h-4 w-4 mr-2" />
-              Registrar
+              Crear Cuenta
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
-            ¿Ya tienes una cuenta registrada?{' '}
-            <Link
-              to="/login"
-              className="inline-flex items-center font-medium text-sky-600 hover:text-sky-700 hover:underline ml-1"
-            >
+            ¿Ya tienes una cuenta?{' '}
+            <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline ml-1">
               Iniciar sesión
             </Link>
           </div>

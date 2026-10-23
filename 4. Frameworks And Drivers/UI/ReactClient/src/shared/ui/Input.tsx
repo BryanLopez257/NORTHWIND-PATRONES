@@ -5,10 +5,11 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
   error?: string;
   helperText?: string;
+  rightElement?: React.ReactNode;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, helperText, id, ...props }, ref) => {
+  ({ className, label, error, helperText, rightElement, id, ...props }, ref) => {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
@@ -18,18 +19,26 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          id={inputId}
-          ref={ref}
-          className={cn(
-            'flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400',
-            'focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent',
-            'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50',
-            error && 'border-red-500 focus:ring-red-500',
-            className
+        <div className="relative flex items-center">
+          <input
+            id={inputId}
+            ref={ref}
+            className={cn(
+              'flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400',
+              'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50',
+              rightElement && 'pr-10',
+              error && 'border-red-500 focus:ring-red-500',
+              className
+            )}
+            {...props}
+          />
+          {rightElement && (
+            <div className="absolute right-3 flex items-center text-slate-400 hover:text-slate-600">
+              {rightElement}
+            </div>
           )}
-          {...props}
-        />
+        </div>
         {error && <p className="mt-1 text-xs text-red-600 font-medium">{error}</p>}
         {!error && helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
       </div>

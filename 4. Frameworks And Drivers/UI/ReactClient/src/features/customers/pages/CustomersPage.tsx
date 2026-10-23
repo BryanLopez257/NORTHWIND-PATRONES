@@ -114,7 +114,7 @@ export const CustomersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Users className="h-7 w-7 text-sky-600" />
+            <Users className="h-7 w-7 text-blue-600" />
             Gestión de Clientes
           </h1>
           <p className="text-slate-500 text-sm mt-1">
@@ -135,7 +135,7 @@ export const CustomersPage: React.FC = () => {
           className={cn(
             'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
             customerTypeFilter === 'Todos'
-              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           )}
         >
@@ -149,7 +149,7 @@ export const CustomersPage: React.FC = () => {
           className={cn(
             'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
             customerTypeFilter === 'Persona Natural'
-              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           )}
         >
@@ -163,7 +163,7 @@ export const CustomersPage: React.FC = () => {
           className={cn(
             'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
             customerTypeFilter === 'Empresa'
-              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           )}
         >
@@ -202,7 +202,7 @@ export const CustomersPage: React.FC = () => {
                 id="filter-balance"
                 value={balanceFilter}
                 onChange={(e) => setBalanceFilter(Number(e.target.value))}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value={0}>Todos los Saldos</option>
                 <option value={1}>🟢 Al Día ($0.00)</option>
@@ -253,7 +253,7 @@ export const CustomersPage: React.FC = () => {
                   id="filter-order"
                   value={orderBy}
                   onChange={(e) => setOrderBy(e.target.value as 'name' | 'id' | 'balance')}
-                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="name">Nombre</option>
                   <option value="id">Código ID</option>
@@ -268,7 +268,7 @@ export const CustomersPage: React.FC = () => {
                   onClick={() => setAscending(!ascending)}
                   title={ascending ? 'Ascendente (A-Z)' : 'Descendente (Z-A)'}
                   aria-label="Alternar orden"
-                  className={ascending ? 'text-sky-600' : 'text-slate-600'}
+                  className={ascending ? 'text-blue-600' : 'text-slate-600'}
                 >
                   <ArrowUpDown className="h-4 w-4" />
                 </Button>
@@ -385,7 +385,7 @@ export const CustomersPage: React.FC = () => {
             </CardDescription>
           </div>
           {isFetching && (
-            <div className="flex items-center gap-1.5 text-xs text-sky-600 font-medium">
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               <span>Actualizando...</span>
             </div>
@@ -409,7 +409,7 @@ export const CustomersPage: React.FC = () => {
                 <TableRow>
                   <TableCell colSpan={6} className="h-40 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="h-6 w-6 animate-spin text-sky-600" />
+                      <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                       <span>Cargando directorio de clientes...</span>
                     </div>
                   </TableCell>
@@ -433,7 +433,7 @@ export const CustomersPage: React.FC = () => {
 
                   return (
                     <TableRow key={c.id}>
-                      <TableCell className="font-mono font-semibold text-sky-700">
+                      <TableCell className="font-mono font-semibold text-blue-700">
                         {c.id}
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
@@ -483,7 +483,7 @@ export const CustomersPage: React.FC = () => {
                             onClick={() => handleOpenEdit(c)}
                             title="Editar cliente"
                             aria-label={`Editar cliente ${c.id}`}
-                            className="h-8 w-8 text-slate-500 hover:text-sky-600 hover:bg-sky-50"
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -541,7 +541,7 @@ export const CustomersPage: React.FC = () => {
           <p className="text-sm text-slate-600">
             ¿Está seguro de eliminar al cliente{' '}
             <strong className="text-slate-900">{customerToDelete?.name}</strong> con ID{' '}
-            <span className="font-mono text-sky-700 font-semibold">{customerToDelete?.id}</span>? Esta acción no se puede deshacer.
+            <span className="font-mono text-blue-700 font-semibold">{customerToDelete?.id}</span>? Esta acción no se puede deshacer.
           </p>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">

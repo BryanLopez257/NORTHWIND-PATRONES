@@ -2,13 +2,13 @@ import React, { useState, useMemo } from 'react';
 import {
   ShoppingCart,
   Plus,
+  Minus,
   Trash2,
   AlertTriangle,
   CheckCircle,
   Building2,
   UserCheck,
   Send,
-  Loader2,
   Mail,
   ShieldAlert,
   MapPin,
@@ -33,9 +33,11 @@ import { Dialog } from '@/shared/ui/Dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
 import { getErrorMessage } from '@/core/api/apiClient';
 import {
+  allowOnlyAlpha,
   allowOnlyLettersAndSpaces,
   allowOnlyDigits,
   allowAddressChars,
+  sanitizeAlpha,
   sanitizeLettersAndSpaces,
   sanitizeDigits,
   sanitizeAddress,
@@ -46,16 +48,19 @@ export const CreateOrderPage: React.FC = () => {
   const { data: customers = [] } = useCustomers();
   const createOrderMutation = useCreateOrder();
 
-  // Form State: inicializados vacíos como en Blazor (sin hardcodeo)
+  // Form State
+  const [customerInput, setCustomerInput] = useState<string>('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [customerLookupError, setCustomerLookupError] = useState<string | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
+
   const [customerDocument, setCustomerDocument] = useState<string>('');
   const [shipAddress, setShipAddress] = useState<string>('');
   const [shipCity, setShipCity] = useState<string>('');
   const [shipCountry, setShipCountry] = useState<string>('');
   const [shipPostalCode, setShipPostalCode] = useState<string>('');
 
-  // Touched state para emular el onBlur / FieldChanged de Blazor
+  // Touched state para emular onBlur
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const markTouched = (field: string) => {
@@ -77,14 +82,51 @@ export const CreateOrderPage: React.FC = () => {
 
   // Selected customer object
   const selectedCustomer: CustomerDto | undefined = useMemo(() => {
-    if (!selectedCustomerId) return undefined;
-    return customers.find((c) => c.id.toUpperCase() === selectedCustomerId.toUpperCase());
-  }, [customers, selectedCustomerId]);
+    const idToSearch = selectedCustomerId || customerInput.trim().toUpperCase();
+    if (!idToSearch) return undefined;
+    return customers.find((c) => c.id.toUpperCase() === idToSearch);
+  }, [customers, selectedCustomerId, customerInput]);
 
   // Credit policy validation
   const hasPendingBalance = (selectedCustomer?.currentBalance ?? 0) > 0;
 
-  // Document validation with ecuadorianIdValidator
+  // Validación activa del cliente al tipear o en blur
+  const validateCustomerCode = (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) {
+      setSelectedCustomerId('');
+      setCustomerLookupError('Debe ingresar o seleccionar un código de cliente (5 letras).');
+      return;
+    }
+
+    if (cleanCode.length < 5) {
+      setSelectedCustomerId('');
+      setCustomerLookupError('El código de cliente debe contener exactamente 5 letras mayúsculas.');
+      return;
+    }
+
+    const found = customers.find((c) => c.id.toUpperCase() === cleanCode);
+    if (!found) {
+      setSelectedCustomerId('');
+      setCustomerLookupError(`El cliente con código '${cleanCode}' no existe en la base de datos.`);
+      return;
+    }
+
+    if (found.currentBalance > 0) {
+      setSelectedCustomerId(found.id);
+      setCustomerLookupError(
+        `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${found.currentBalance.toFixed(
+          2
+        )}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`
+      );
+      return;
+    }
+
+    setSelectedCustomerId(found.id);
+    setCustomerLookupError(null);
+  };
+
+  // Document validation with EcuadorianValidator
   const documentValidation = useMemo(() => {
     const cleanDoc = customerDocument.trim();
     if (!cleanDoc) {
@@ -98,7 +140,7 @@ export const CreateOrderPage: React.FC = () => {
       };
     }
 
-    // Special company rule: Empresa requires 13-digit RUC
+    // Regla especial: Empresa exige obligatoriamente RUC de 13 dígitos
     if (selectedCustomer?.customerType === 'Empresa') {
       if (cleanDoc.length === 10) {
         return {
@@ -124,12 +166,12 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [customerDocument, selectedCustomer]);
 
-  // Inline validations onBlur para emular ValidationMessage de Blazor
+  // Inline validations onBlur
   const errors = useMemo(() => {
     const errs: Record<string, string | null> = {};
 
-    if (touched.customer && !selectedCustomerId) {
-      errs.customer = 'Debe seleccionar un cliente del catálogo.';
+    if (touched.customer && !selectedCustomerId && !customerInput.trim()) {
+      errs.customer = 'Debe especificar o seleccionar un cliente.';
     }
 
     if (touched.document && !documentValidation.isValid) {
@@ -165,9 +207,9 @@ export const CreateOrderPage: React.FC = () => {
     }
 
     return errs;
-  }, [touched, selectedCustomerId, documentValidation, shipAddress, shipCity, shipCountry]);
+  }, [touched, selectedCustomerId, customerInput, documentValidation, shipAddress, shipCity, shipCountry]);
 
-  // Financial calculations (Subtotal, 15% IVA, Total, Total Units)
+  // Financial calculations
   const financialTotals = useMemo(() => {
     const subtotal = cartItems.reduce((acc, item) => acc + item.subTotal, 0);
     const totalUnits = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -183,9 +225,11 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [cartItems]);
 
-  // Handler for selecting customer exclusively from CustomerSelectorModal
-  const handleSelectCustomer = (customer: CustomerDto) => {
+  // Handler for selecting customer from CustomerSelectorModal
+  const handleSelectCustomerFromModal = (customer: CustomerDto) => {
+    setCustomerInput(customer.id.toUpperCase());
     setSelectedCustomerId(customer.id.toUpperCase());
+    setCustomerLookupError(null);
     markTouched('customer');
     setFormError(null);
   };
@@ -215,17 +259,13 @@ export const CreateOrderPage: React.FC = () => {
     setCartItems((prev) => [...prev, newItem]);
   };
 
-  const handleUpdateQuantity = (productId: number, rawValue: string) => {
-    // Only whole numbers
-    const cleanValue = rawValue.replace(/\D/g, '');
-    let qty = parseInt(cleanValue, 10);
+  const handleUpdateQuantity = (productId: number, newQtyNumber: number) => {
+    let qty = isNaN(newQtyNumber) ? 1 : newQtyNumber;
+    if (qty < 1) qty = 1;
 
     setCartItems((prev) =>
       prev.map((item) => {
         if (item.productId === productId) {
-          if (isNaN(qty) || qty < 1) qty = 1;
-          if (qty > item.unitsInStock) qty = item.unitsInStock;
-
           return {
             ...item,
             quantity: qty,
@@ -237,6 +277,18 @@ export const CreateOrderPage: React.FC = () => {
     );
   };
 
+  const handleIncrementQuantity = (productId: number) => {
+    const current = cartItems.find((i) => i.productId === productId);
+    if (!current) return;
+    handleUpdateQuantity(productId, current.quantity + 1);
+  };
+
+  const handleDecrementQuantity = (productId: number) => {
+    const current = cartItems.find((i) => i.productId === productId);
+    if (!current || current.quantity <= 1) return;
+    handleUpdateQuantity(productId, current.quantity - 1);
+  };
+
   const confirmRemoveItem = () => {
     if (itemToDelete) {
       setCartItems((prev) => prev.filter((item) => item.productId !== itemToDelete.productId));
@@ -244,9 +296,11 @@ export const CreateOrderPage: React.FC = () => {
     }
   };
 
-  // Reset form a valores nulos (vacíos)
+  // Reset form
   const handleResetForm = () => {
+    setCustomerInput('');
     setSelectedCustomerId('');
+    setCustomerLookupError(null);
     setCustomerDocument('');
     setShipAddress('');
     setShipCity('');
@@ -262,7 +316,6 @@ export const CreateOrderPage: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
-    // Marcar todos los campos como tocados para revelar errores si los hay
     setTouched({
       customer: true,
       document: true,
@@ -271,8 +324,10 @@ export const CreateOrderPage: React.FC = () => {
       country: true,
     });
 
+    validateCustomerCode(customerInput);
+
     if (!selectedCustomerId) {
-      setFormError('Por favor seleccione un cliente utilizando el botón "Buscar Cliente".');
+      setFormError('Por favor seleccione o ingrese un código de cliente válido (5 letras).');
       return;
     }
 
@@ -281,8 +336,11 @@ export const CreateOrderPage: React.FC = () => {
       return;
     }
 
-    if (hasPendingBalance) {
-      setFormError('No se puede emitir la orden: el cliente seleccionado mantiene saldo pendiente de pago.');
+    if (hasPendingBalance || customerLookupError) {
+      setFormError(
+        customerLookupError ||
+          'No se puede emitir la orden: el cliente seleccionado mantiene saldo pendiente de pago.'
+      );
       return;
     }
 
@@ -291,13 +349,8 @@ export const CreateOrderPage: React.FC = () => {
       return;
     }
 
-    if (!shipAddress.trim()) {
+    if (!shipAddress.trim() || shipAddress.trim().length > 60) {
       setFormError('La dirección de envío es obligatoria (máximo 60 caracteres).');
-      return;
-    }
-
-    if (shipAddress.trim().length > 60) {
-      setFormError('La dirección de envío no puede exceder 60 caracteres.');
       return;
     }
 
@@ -323,7 +376,9 @@ export const CreateOrderPage: React.FC = () => {
         return;
       }
       if (item.quantity > item.unitsInStock) {
-        setFormError(`La cantidad solicitada para ${item.productName} (${item.quantity}) excede el stock disponible (${item.unitsInStock}).`);
+        setFormError(
+          `La cantidad solicitada para ${item.productName} (${item.quantity}) excede el stock disponible (${item.unitsInStock}).`
+        );
         return;
       }
     }
@@ -344,14 +399,11 @@ export const CreateOrderPage: React.FC = () => {
 
     try {
       const result = await createOrderMutation.mutateAsync(payload);
-      // Clean form on success
       handleResetForm();
 
-      // Show official voucher modal immediately
       if (result.invoice) {
         setIssuedInvoice(result.invoice);
       } else {
-        // Fallback reconstructed invoice if backend returned minimal invoice
         setIssuedInvoice({
           id: result.orderId,
           invoiceNumber: result.invoiceNumber || `FAC-${result.orderId}`,
@@ -382,12 +434,16 @@ export const CreateOrderPage: React.FC = () => {
     }
   };
 
+  const hasAnyStockExcess = cartItems.some((item) => item.quantity > item.unitsInStock);
+
   const isSubmitDisabled =
     createOrderMutation.isPending ||
     !selectedCustomerId ||
     hasPendingBalance ||
+    Boolean(customerLookupError) ||
     !documentValidation.isValid ||
     cartItems.length === 0 ||
+    hasAnyStockExcess ||
     !shipAddress.trim() ||
     !shipCity.trim() ||
     !shipCountry.trim();
@@ -398,11 +454,11 @@ export const CreateOrderPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center space-x-2">
-            <ShoppingCart className="h-6 w-6 text-sky-600" />
-            <span>Nueva Orden de Venta</span>
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+            <span>Crear Orden de Compra</span>
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Registro de pedido con facturación electrónica y verificación automática de políticas de crédito.
+            Registro comercial de órdenes y facturación electrónica con validación ecuatoriana en tiempo real.
           </p>
         </div>
 
@@ -428,18 +484,18 @@ export const CreateOrderPage: React.FC = () => {
 
       {/* Strict Credit Policy Alert Banner */}
       {selectedCustomer && hasPendingBalance && (
-        <div className="p-4 rounded-xl bg-red-50 border-2 border-red-400 text-red-900 shadow-sm flex items-start space-x-3.5 animate-in fade-in">
+        <div className="p-4 rounded-xl bg-red-50 border-2 border-red-400 text-red-900 shadow-xs flex items-start space-x-3.5 animate-in fade-in">
           <ShieldAlert className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h4 className="font-bold text-red-800 text-base">
-              Bloqueo por Política de Crédito Estricta
+              Bloqueo por Política de Crédito
             </h4>
             <p className="text-sm font-medium text-red-700 leading-relaxed">
-              Cliente con saldo pendiente (<span className="font-bold font-mono text-red-900">${selectedCustomer.currentBalance.toFixed(2)}</span>).
-              Las políticas de crédito exigen saldo <span className="font-bold font-mono">$0.00</span> para autorizar una nueva orden de venta.
-            </p>
-            <p className="text-xs text-red-600">
-              El botón de emisión de la orden permanece inhabilitado hasta que el cliente regularice sus obligaciones financieras.
+              No se puede seleccionar al cliente porque posee un saldo deudor pendiente de{' '}
+              <span className="font-bold font-mono text-red-900">
+                ${selectedCustomer.currentBalance.toFixed(2)}
+              </span>
+              . Clientes con saldo pendiente no están autorizados para emitir órdenes.
             </p>
           </div>
         </div>
@@ -450,26 +506,41 @@ export const CreateOrderPage: React.FC = () => {
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
-              <UserCheck className="h-5 w-5 text-sky-600" />
-              <span>1. Datos del Cliente e Identificación Fiscal</span>
+              <UserCheck className="h-5 w-5 text-blue-600" />
+              <span>1. Información del Cliente y Envío</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Customer Selector: Strictly ReadOnly with Modal Selector */}
+              {/* Customer Selector: Editable 5 letters with validation + Search Button */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Cliente <span className="text-rose-500">*</span>
+                  Cliente (5 letras mayúsculas) <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <Input
                     id="customerId"
                     type="text"
-                    readOnly
-                    placeholder="Haga clic en 'Buscar Cliente'..."
-                    value={selectedCustomer ? `${selectedCustomer.id} - ${selectedCustomer.name}` : selectedCustomerId}
-                    onClick={() => setShowCustomerModal(true)}
-                    className="font-medium cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors"
+                    placeholder="Ej. ALFKI"
+                    maxLength={5}
+                    value={customerInput}
+                    onKeyDown={allowOnlyAlpha}
+                    onChange={(e) => {
+                      const clean = sanitizeAlpha(e.target.value, true).slice(0, 5);
+                      setCustomerInput(clean);
+                      if (clean.length === 5) {
+                        validateCustomerCode(clean);
+                      } else {
+                        setSelectedCustomerId('');
+                        setCustomerLookupError(null);
+                      }
+                      setFormError(null);
+                    }}
+                    onBlur={() => {
+                      markTouched('customer');
+                      validateCustomerCode(customerInput);
+                    }}
+                    className="font-mono uppercase tracking-wider font-semibold"
                     required
                   />
                   <Button
@@ -478,11 +549,18 @@ export const CreateOrderPage: React.FC = () => {
                     onClick={() => setShowCustomerModal(true)}
                     className="whitespace-nowrap flex items-center shrink-0 border-slate-300 hover:bg-slate-50"
                   >
-                    <Users className="w-4 h-4 mr-1.5 text-sky-600" />
+                    <Users className="w-4 h-4 mr-1.5 text-blue-600" />
                     Buscar Cliente
                   </Button>
                 </div>
-                {errors.customer && (
+
+                {customerLookupError && (
+                  <p className="text-xs text-rose-600 mt-1 flex items-start gap-1 leading-snug">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{customerLookupError}</span>
+                  </p>
+                )}
+                {!customerLookupError && errors.customer && (
                   <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
                     {errors.customer}
@@ -498,7 +576,7 @@ export const CreateOrderPage: React.FC = () => {
                 <Input
                   id="customerDocument"
                   type="text"
-                  placeholder="Ej. 1790012345001 o 1710000000"
+                  placeholder="10 dígitos (Cédula) o 13 dígitos (RUC)"
                   value={customerDocument}
                   onChange={handleDocumentChange}
                   onBlur={() => markTouched('document')}
@@ -537,7 +615,7 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Selected Customer Information Badge Box */}
+            {/* Selected Customer Information Box */}
             {selectedCustomer && (
               <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
@@ -576,16 +654,21 @@ export const CreateOrderPage: React.FC = () => {
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
-              <MapPin className="h-5 w-5 text-sky-600" />
-              <span>2. Datos de Envío y Destino</span>
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span>Datos de Envío y Destino</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Dirección de Entrega <span className="text-rose-500">*</span> (máx 60 caracteres)
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Dirección de Envío <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {shipAddress.length}/60
+                  </span>
+                </div>
                 <Input
                   id="shipAddress"
                   type="text"
@@ -598,22 +681,23 @@ export const CreateOrderPage: React.FC = () => {
                   className={errors.address ? 'border-rose-400 focus:border-rose-400' : ''}
                   required
                 />
-                {errors.address ? (
+                {errors.address && (
                   <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
                     {errors.address}
                   </p>
-                ) : (
-                  <span className="text-[11px] text-slate-400 mt-1 block">
-                    {shipAddress.length}/60 caracteres
-                  </span>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Ciudad <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Ciudad <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {shipCity.length}/15
+                  </span>
+                </div>
                 <Input
                   id="shipCity"
                   type="text"
@@ -635,9 +719,14 @@ export const CreateOrderPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  País <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    País <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {shipCountry.length}/15
+                  </span>
+                </div>
                 <Input
                   id="shipCountry"
                   type="text"
@@ -659,41 +748,62 @@ export const CreateOrderPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Código Postal
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Código Postal
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {shipPostalCode.length}/6
+                  </span>
+                </div>
                 <Input
                   id="shipPostalCode"
                   type="text"
                   placeholder="Ej. 170150"
                   value={shipPostalCode}
-                  onChange={(e) => setShipPostalCode(sanitizeDigits(e.target.value).slice(0, 10))}
+                  onChange={(e) =>
+                    setShipPostalCode(sanitizeDigits(e.target.value).slice(0, 6))
+                  }
                   onKeyDown={allowOnlyDigits}
-                  maxLength={10}
+                  maxLength={6}
+                  className="font-mono"
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 3: Cart / Order Details */}
+        {/* Section 3: Cart / Lines of Products */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="pb-3 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
-              <ShoppingCart className="h-5 w-5 text-sky-600" />
-              <span>3. Detalle de Productos (Carrito de Compra)</span>
+              <ShoppingCart className="h-5 w-5 text-blue-600" />
+              <span>2. Líneas de Productos</span>
             </CardTitle>
 
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={() => setIsCatalogOpen(true)}
-              className="bg-sky-600 hover:bg-sky-700 text-white flex items-center space-x-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Agregar Producto</span>
-            </Button>
+            <div className="flex items-center space-x-2">
+              {(!selectedCustomer || Boolean(customerLookupError) || hasPendingBalance) && (
+                <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md hidden sm:inline-block">
+                  Seleccione un cliente válido para agregar productos
+                </span>
+              )}
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => setIsCatalogOpen(true)}
+                disabled={!selectedCustomer || Boolean(customerLookupError) || hasPendingBalance}
+                title={
+                  !selectedCustomer || Boolean(customerLookupError) || hasPendingBalance
+                    ? 'Debe seleccionar un cliente antes de agregar productos'
+                    : 'Agregar producto al carrito'
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Agregar Producto</span>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
             {/* Mailtrap Notification Badge Alert if cartItems.length > 3 */}
@@ -701,9 +811,8 @@ export const CreateOrderPage: React.FC = () => {
               <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 flex items-start space-x-3 text-xs sm:text-sm animate-in fade-in">
                 <Mail className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div className="leading-snug">
-                  <span className="font-bold">📧 Orden Especial:</span> Al contener más de 3 productos,
-                  el servidor despachará una notificación automática al administrador vía{' '}
-                  <span className="font-semibold text-amber-800">Mailtrap</span> tras registrarse.
+                  <span className="font-bold">⚠️ Orden Especial (&gt; 3 productos):</span> Se notificará vía{' '}
+                  <span className="font-bold underline decoration-amber-500">Mailtrap</span> al registrarse.
                 </div>
               </div>
             )}
@@ -714,7 +823,9 @@ export const CreateOrderPage: React.FC = () => {
                 <ShoppingCart className="h-10 w-10 mx-auto text-slate-300 mb-2" />
                 <p className="font-medium text-slate-600">El carrito de productos está vacío</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Haga clic en &quot;Agregar Producto&quot; para seleccionar artículos disponibles del catálogo.
+                  {!selectedCustomer || Boolean(customerLookupError) || hasPendingBalance
+                    ? 'Debe seleccionar primero un cliente autorizado en el paso 1 para habilitar la adición de productos.'
+                    : 'Haga clic en "Agregar Producto" para abrir el catálogo e incorporar ítems a la orden.'}
                 </p>
               </div>
             ) : (
@@ -726,67 +837,99 @@ export const CreateOrderPage: React.FC = () => {
                       <TableHead>Producto</TableHead>
                       <TableHead className="text-right">Precio Unitario ($)</TableHead>
                       <TableHead className="text-center">Stock Disp.</TableHead>
-                      <TableHead className="text-center w-28">Cantidad</TableHead>
+                      <TableHead className="text-center w-40">Cantidad</TableHead>
                       <TableHead className="text-right">Subtotal ($)</TableHead>
                       <TableHead className="text-center w-16">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {cartItems.map((item, index) => (
-                      <TableRow key={item.productId}>
-                        <TableCell className="text-center font-mono text-xs text-slate-400">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-slate-800">{item.productName}</div>
-                          <div className="text-xs font-mono text-slate-400">ID #{item.productId}</div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-slate-700">
-                          ${Number(item.unitPrice).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={item.unitsInStock <= 5 ? 'warning' : 'default'}>
-                            {item.unitsInStock} unid.
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <input
-                            type="number"
-                            min="1"
-                            max={item.unitsInStock}
-                            value={item.quantity}
-                            onChange={(e) => handleUpdateQuantity(item.productId, e.target.value)}
-                            className="w-20 rounded border border-slate-300 px-2 py-1 text-center font-mono text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-semibold text-slate-900">
-                          ${Number(item.subTotal).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setItemToDelete(item)}
-                            className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
-                            title="Eliminar de la orden"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {cartItems.map((item, index) => {
+                      const exceedsStock = item.quantity > item.unitsInStock;
+
+                      return (
+                        <TableRow key={item.productId} className={exceedsStock ? 'bg-rose-50/50' : ''}>
+                          <TableCell className="text-center font-mono text-xs text-slate-400">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-800">{item.productName}</div>
+                            <div className="text-xs font-mono text-slate-400">ID #{item.productId}</div>
+                            {exceedsStock && (
+                              <p className="text-xs text-rose-600 font-semibold mt-0.5 flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Excede stock disponible ({item.unitsInStock} disp.)
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-slate-700">
+                            ${Number(item.unitPrice).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={item.unitsInStock <= 5 ? 'warning' : 'default'}>
+                              {item.unitsInStock} unid.
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="inline-flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => handleDecrementQuantity(item.productId)}
+                                disabled={item.quantity <= 1}
+                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 transition-colors"
+                                aria-label="Disminuir cantidad"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleUpdateQuantity(item.productId, parseInt(e.target.value, 10))
+                                }
+                                className="w-14 text-center font-mono text-sm py-1 border-x border-slate-200 focus:outline-none focus:bg-blue-50/30"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleIncrementQuantity(item.productId)}
+                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
+                                aria-label="Aumentar cantidad"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold text-slate-900">
+                            ${Number(item.subTotal).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setItemToDelete(item)}
+                              className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                              title="Eliminar de la orden"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
             )}
 
-            {/* Financial Summary & Emit Button */}
+            {/* Section 3: Financial Summary & Emit Order Button */}
             <div className="flex flex-col sm:flex-row justify-between items-end pt-4 border-t border-slate-200 gap-6">
               <div className="text-xs text-slate-500 space-y-1">
-                <p>&bull; Total de Unidades en Carrito: <strong className="text-slate-800 font-mono">{financialTotals.totalUnits}</strong></p>
-                <p>&bull; El IVA aplicado corresponde a la tarifa legal vigente en Ecuador (15%).</p>
-                <p>&bull; Al emitirse, se actualizará automáticamente el inventario de existencias.</p>
+                <p>
+                  &bull; Total de Unidades: <strong className="text-slate-800 font-mono">{financialTotals.totalUnits}</strong>
+                </p>
+                <p>&bull; IVA (Tarifa 15% Ecuador): Calculado conforme a la ley tributaria vigente.</p>
+                <p>&bull; La emisión registrará la orden y generará el comprobante electrónico correspondiente.</p>
               </div>
 
               <div className="w-full sm:w-80 space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-200">
@@ -795,140 +938,92 @@ export const CreateOrderPage: React.FC = () => {
                   <span className="font-mono font-medium">${financialTotals.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
-                  <span>IVA (Tarifa 15%):</span>
+                  <span>IVA (Tarifa 15% Ecuador):</span>
                   <span className="font-mono font-medium">${financialTotals.tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-slate-200">
-                  <span>TOTAL A LIQUIDAR:</span>
-                  <span className="font-mono text-sky-700 text-base">
-                    ${financialTotals.total.toFixed(2)} USD
-                  </span>
+                <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
+                  <span>Total a Liquidar:</span>
+                  <span className="font-mono text-blue-600">${financialTotals.total.toFixed(2)}</span>
                 </div>
 
-                <div className="pt-2">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitDisabled}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 shadow-sm disabled:opacity-50 flex items-center justify-center space-x-2"
-                  >
-                    {createOrderMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Procesando Orden...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        <span>Emitir Orden de Venta</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={isSubmitDisabled}
+                  isLoading={createOrderMutation.isPending}
+                  className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center space-x-2"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Enviar Orden y Emitir Factura</span>
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       </form>
 
-      {/* Catalog Selection Modal */}
-      <ProductSelectorModal
-        open={isCatalogOpen}
-        onOpenChange={setIsCatalogOpen}
-        selectedProductIds={cartItems.map((item) => item.productId)}
-        onSelectProduct={handleAddProduct}
-      />
-
-      {/* Customer Selection Modal */}
+      {/* Customer Picker Dialog */}
       <CustomerSelectorModal
         open={showCustomerModal}
         onOpenChange={setShowCustomerModal}
-        onSelectCustomer={handleSelectCustomer}
+        onSelectCustomer={handleSelectCustomerFromModal}
         selectedCustomerId={selectedCustomerId}
       />
 
-      {/* Confirmation Dialog for Item Deletion from Cart */}
+      {/* Product Catalog Picker Dialog */}
+      <ProductSelectorModal
+        open={isCatalogOpen}
+        onOpenChange={setIsCatalogOpen}
+        selectedProductIds={cartItems.map((i) => i.productId)}
+        onSelectProduct={handleAddProduct}
+      />
+
+      {/* Confirmation Dialog: Delete Cart Item */}
       <Dialog
-        open={itemToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setItemToDelete(null);
-        }}
-        title="Confirmar Eliminación"
-        description="Gestión de líneas de detalle de la orden"
+        open={Boolean(itemToDelete)}
+        onOpenChange={(open) => !open && setItemToDelete(null)}
+        title="Quitar producto de la orden"
+        description={`¿Está seguro de remover "${itemToDelete?.productName}" del carrito de compra?`}
       >
-        <div className="space-y-4">
-          <p className="text-sm text-slate-700">
-            ¿Está seguro de que desea eliminar el producto{' '}
-            <strong className="text-slate-900">&quot;{itemToDelete?.productName}&quot;</strong> (ID #{itemToDelete?.productId}) del pedido?
-          </p>
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setItemToDelete(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={confirmRemoveItem}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Trash2 className="h-4 w-4 mr-1.5" />
-              Eliminar Producto
-            </Button>
-          </div>
+        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+          <Button variant="outline" onClick={() => setItemToDelete(null)}>
+            Cancelar
+          </Button>
+          <Button variant="destructive" onClick={confirmRemoveItem}>
+            Quitar Producto
+          </Button>
         </div>
       </Dialog>
 
-      {/* Confirmation Dialog for Resetting Form */}
+      {/* Confirmation Dialog: Reset Form */}
       <Dialog
         open={showResetConfirm}
         onOpenChange={setShowResetConfirm}
-        title="Confirmar Reinicio del Formulario"
-        description="Gestión de datos de la orden en curso"
+        title="¿Limpiar todo el formulario?"
+        description="Esta acción vaciará los datos del cliente, los destinos de entrega y todos los productos agregados al carrito."
       >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 text-sm">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
-            <div>
-              <p className="font-semibold">¿Está seguro de que desea limpiar el formulario?</p>
-              <p className="text-xs text-amber-700 mt-1">
-                Se descartarán los datos del cliente seleccionado, los campos de destino y todos los productos agregados al carrito de compra.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowResetConfirm(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setShowResetConfirm(false);
-                handleResetForm();
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <RefreshCw className="h-4 w-4 mr-1.5" />
-              Limpiar Formulario
-            </Button>
-          </div>
+        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+          <Button variant="outline" onClick={() => setShowResetConfirm(false)}>
+            Continuar editando
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              handleResetForm();
+              setShowResetConfirm(false);
+            }}
+          >
+            Limpiar Formulario
+          </Button>
         </div>
       </Dialog>
 
-      {/* Post-Issuance Official Invoice Voucher Modal */}
+      {/* Official Printable Voucher Dialog */}
       <Dialog
         open={voucherModalOpen}
         onOpenChange={setVoucherModalOpen}
-        title="Factura Emitida con Éxito"
-        description="Se ha registrado la orden de venta y generado el comprobante electrónico correspondiente."
+        title="Comprobante de Venta Electrónico"
+        description="Orden registrada exitosamente en el servidor. A continuación se detalla la liquidación tributaria emitida."
         className="max-w-4xl"
       >
         {issuedInvoice && (

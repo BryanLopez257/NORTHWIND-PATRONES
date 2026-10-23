@@ -78,7 +78,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
             <select
               value={searchCriteria}
               onChange={(e) => setSearchCriteria(e.target.value as 'all' | 'name' | 'id')}
-              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">🔍 Todos</option>
               <option value="name">📦 Nombre</option>
@@ -112,7 +112,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
               type="checkbox"
               checked={onlyInStock}
               onChange={(e) => setOnlyInStock(e.target.checked)}
-              className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+              className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
             />
             <span>Solo productos con existencias disponibles</span>
           </label>
@@ -167,7 +167,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-semibold text-sky-700">
+                      <TableCell className="text-right font-mono font-semibold text-blue-700">
                         ${Number(product.unitPrice).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-center">

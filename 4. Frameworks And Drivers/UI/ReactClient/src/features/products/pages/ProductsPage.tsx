@@ -109,7 +109,7 @@ export const ProductsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Package className="h-7 w-7 text-sky-600" />
+            <Package className="h-7 w-7 text-blue-600" />
             Gestión de Productos
           </h1>
           <p className="text-slate-500 text-sm mt-1">
@@ -152,7 +152,7 @@ export const ProductsPage: React.FC = () => {
                 id="filter-stock"
                 value={stockFilter}
                 onChange={(e) => setStockFilter(Number(e.target.value))}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value={0}>Todos los niveles</option>
                 <option value={1}>🟢 En Stock (&gt; 0)</option>
@@ -203,7 +203,7 @@ export const ProductsPage: React.FC = () => {
                   id="product-order-by"
                   value={orderBy}
                   onChange={(e) => setOrderBy(e.target.value as 'name' | 'price' | 'stock')}
-                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="name">Nombre</option>
                   <option value="price">Precio</option>
@@ -218,7 +218,7 @@ export const ProductsPage: React.FC = () => {
                   onClick={() => setAscending(!ascending)}
                   title={ascending ? 'Ascendente (A-Z)' : 'Descendente (Z-A)'}
                   aria-label="Alternar orden"
-                  className={ascending ? 'text-sky-600' : 'text-slate-600'}
+                  className={ascending ? 'text-blue-600' : 'text-slate-600'}
                 >
                   <ArrowUpDown className="h-4 w-4" />
                 </Button>
@@ -335,7 +335,7 @@ export const ProductsPage: React.FC = () => {
             </CardDescription>
           </div>
           {isFetching && (
-            <div className="flex items-center gap-1.5 text-xs text-sky-600 font-medium">
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               <span>Actualizando...</span>
             </div>
@@ -359,7 +359,7 @@ export const ProductsPage: React.FC = () => {
                 <TableRow>
                   <TableCell colSpan={6} className="h-40 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="h-6 w-6 animate-spin text-sky-600" />
+                      <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                       <span>Cargando catálogo de productos...</span>
                     </div>
                   </TableCell>
@@ -421,7 +421,7 @@ export const ProductsPage: React.FC = () => {
                             onClick={() => handleOpenEdit(p)}
                             title="Editar producto"
                             aria-label={`Editar producto ${p.name}`}
-                            className="h-8 w-8 text-slate-500 hover:text-sky-600 hover:bg-sky-50"
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>

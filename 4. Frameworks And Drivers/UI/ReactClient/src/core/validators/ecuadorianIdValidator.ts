@@ -1,6 +1,6 @@
 /**
  * Validador de Cédula y RUC de Ecuador
- * Algoritmos oficiales basados en Módulo 10 y Módulo 11.
+ * Algoritmos oficiales basados en Módulo 10 y Módulo 11 (SRI / Registro Civil).
  */
 
 export interface ValidationResult {
@@ -10,8 +10,110 @@ export interface ValidationResult {
 }
 
 /**
- * Valida una cédula ecuatoriana (10 dígitos numéricos).
- * Aplica algoritmo de Módulo 10 con coeficientes 2, 1 alternados.
+ * Clase de utilidad oficial EcuadorianValidator idéntica a la implementación en Flutter.
+ */
+export class EcuadorianValidator {
+  /**
+   * Valida una cédula ecuatoriana (10 dígitos).
+   */
+  static isValidCedula(cedula: string | null | undefined): boolean {
+    if (!cedula) return false;
+    const trimmed = cedula.trim();
+    if (trimmed.length !== 10) return false;
+    if (!/^\d{10}$/.test(trimmed)) return false;
+
+    const province = parseInt(trimmed.substring(0, 2), 10);
+    if ((province < 1 || province > 24) && province !== 30) {
+      return false;
+    }
+
+    const thirdDigit = parseInt(trimmed[2], 10);
+    if (thirdDigit >= 6) {
+      return false;
+    }
+
+    const coefficients = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      let val = parseInt(trimmed[i], 10) * coefficients[i];
+      if (val >= 10) val -= 9;
+      sum += val;
+    }
+
+    const remainder = sum % 10;
+    const expectedVerifier = remainder === 0 ? 0 : 10 - remainder;
+    return expectedVerifier === parseInt(trimmed[9], 10);
+  }
+
+  /**
+   * Valida un RUC ecuatoriano (13 dígitos).
+   */
+  static isValidRuc(ruc: string | null | undefined): boolean {
+    if (!ruc) return false;
+    const trimmed = ruc.trim();
+    if (trimmed.length !== 13) return false;
+    if (!/^\d{13}$/.test(trimmed)) return false;
+
+    const province = parseInt(trimmed.substring(0, 2), 10);
+    if ((province < 1 || province > 24) && province !== 30) {
+      return false;
+    }
+
+    const thirdDigit = parseInt(trimmed[2], 10);
+
+    // 1. Persona Natural (tercer dígito < 6)
+    if (thirdDigit < 6) {
+      if (!this.isValidCedula(trimmed.substring(0, 10))) {
+        return false;
+      }
+      const establishment = trimmed.substring(10, 13);
+      return establishment !== '000';
+    }
+
+    // 2. Sociedad Privada / Extranjeros (tercer dígito = 9) - Módulo 11
+    if (thirdDigit === 9) {
+      const coefficients = [4, 3, 2, 7, 6, 5, 4, 3, 2];
+      let sum = 0;
+      for (let i = 0; i < 9; i++) {
+        sum += parseInt(trimmed[i], 10) * coefficients[i];
+      }
+      const remainder = sum % 11;
+      const verifier = remainder === 0 ? 0 : 11 - remainder;
+      if (verifier === 10) return false; // Regla SRI: si da 10 no es válido
+
+      if (verifier !== parseInt(trimmed[9], 10)) {
+        return false;
+      }
+
+      const establishment = trimmed.substring(10, 13);
+      return establishment !== '000';
+    }
+
+    // 3. Entidad Pública (tercer dígito = 6) - Módulo 11
+    if (thirdDigit === 6) {
+      const coefficients = [3, 2, 7, 6, 5, 4, 3, 2];
+      let sum = 0;
+      for (let i = 0; i < 8; i++) {
+        sum += parseInt(trimmed[i], 10) * coefficients[i];
+      }
+      const remainder = sum % 11;
+      const verifier = remainder === 0 ? 0 : 11 - remainder;
+      if (verifier === 10) return false; // Regla SRI: si da 10 no es válido
+
+      if (verifier !== parseInt(trimmed[8], 10)) {
+        return false;
+      }
+
+      const establishment = trimmed.substring(9, 13);
+      return establishment !== '0000';
+    }
+
+    return false;
+  }
+}
+
+/**
+ * Valida una cédula ecuatoriana detallando el motivo del fallo.
  */
 export function validateCedula(cedula: string): ValidationResult {
   const clean = cedula?.trim() || '';
@@ -32,12 +134,9 @@ export function validateCedula(cedula: string): ValidationResult {
 
   const coefficients = [2, 1, 2, 1, 2, 1, 2, 1, 2];
   let sum = 0;
-
   for (let i = 0; i < 9; i++) {
     let val = parseInt(clean[i], 10) * coefficients[i];
-    if (val >= 10) {
-      val -= 9;
-    }
+    if (val >= 10) val -= 9;
     sum += val;
   }
 
@@ -52,11 +151,7 @@ export function validateCedula(cedula: string): ValidationResult {
 }
 
 /**
- * Valida un RUC ecuatoriano (13 dígitos numéricos).
- * Clasifica y valida según:
- * 1. Persona Natural (3er dígito < 6): Cédula válida + sufijo 001.
- * 2. Sociedad Privada / Extranjera (3er dígito = 9): Módulo 11 con 9 coeficientes [4,3,2,7,6,5,4,3,2].
- * 3. Entidad Pública (3er dígito = 6): Módulo 11 con 8 coeficientes [3,2,7,6,5,4,3,2].
+ * Valida un RUC ecuatoriano (13 dígitos) detallando el motivo del fallo.
  */
 export function validateRuc(ruc: string): ValidationResult {
   const clean = ruc?.trim() || '';
@@ -93,15 +188,17 @@ export function validateRuc(ruc: string): ValidationResult {
   if (thirdDigit === 6) {
     const coefficients = [3, 2, 7, 6, 5, 4, 3, 2];
     let sum = 0;
-
     for (let i = 0; i < 8; i++) {
       sum += parseInt(clean[i], 10) * coefficients[i];
     }
 
     const remainder = sum % 11;
     const calculated = remainder === 0 ? 0 : 11 - remainder;
-    const verifier = parseInt(clean[8], 10);
+    if (calculated === 10) {
+      return { isValid: false, error: 'RUC público inválido: el dígito verificador calculado no puede ser 10.' };
+    }
 
+    const verifier = parseInt(clean[8], 10);
     if (verifier !== calculated) {
       return { isValid: false, error: 'Dígito verificador de RUC público no coincide.' };
     }
@@ -118,15 +215,17 @@ export function validateRuc(ruc: string): ValidationResult {
   if (thirdDigit === 9) {
     const coefficients = [4, 3, 2, 7, 6, 5, 4, 3, 2];
     let sum = 0;
-
     for (let i = 0; i < 9; i++) {
       sum += parseInt(clean[i], 10) * coefficients[i];
     }
 
     const remainder = sum % 11;
     const calculated = remainder === 0 ? 0 : 11 - remainder;
-    const verifier = parseInt(clean[9], 10);
+    if (calculated === 10) {
+      return { isValid: false, error: 'RUC privado/jurídico inválido: el dígito verificador calculado no puede ser 10.' };
+    }
 
+    const verifier = parseInt(clean[9], 10);
     if (verifier !== calculated) {
       return { isValid: false, error: 'Dígito verificador de RUC privado/jurídico no coincide.' };
     }

@@ -57,7 +57,7 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
               variant="default"
               size="sm"
               onClick={handlePrint}
-              className="flex items-center space-x-1.5 bg-sky-600 hover:bg-sky-700 text-white"
+              className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Printer className="h-4 w-4" />
               <span>Imprimir Comprobante</span>
@@ -80,11 +80,11 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-slate-200 gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="bg-sky-600 text-white p-2 rounded font-bold text-base">
+              <div className="bg-blue-600 text-white p-2 rounded font-bold text-base">
                 NW
               </div>
               <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                NORTHWIND <span className="text-sky-600 font-semibold">SALES</span>
+                NORTHWIND <span className="text-blue-600 font-semibold">SALES</span>
               </h1>
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -123,7 +123,7 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
             {invoice.customerId && (
               <div className="text-xs text-slate-600">
                 <span className="font-semibold text-slate-700">Código Interno: </span>
-                <span className="font-mono font-bold text-sky-800">{invoice.customerId}</span>
+                <span className="font-mono font-bold text-blue-800">{invoice.customerId}</span>
               </div>
             )}
             <div className="flex items-center space-x-2 text-slate-600 text-xs">
@@ -214,10 +214,10 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
         <div className="flex flex-col sm:flex-row justify-between items-start pt-3 border-t-2 border-slate-200 gap-4 print-break-inside-avoid">
           {/* Legal Historical Snapshot Pattern Alert */}
           <div className="max-w-md space-y-1.5">
-            <div className="p-3 rounded-lg bg-sky-50 border border-sky-200 text-xs text-slate-700 flex items-start space-x-2.5">
-              <ShieldCheck className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-slate-700 flex items-start space-x-2.5">
+              <ShieldCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
-                <strong className="text-sky-900 block font-semibold">Registro de Integridad Histórica (Patrón Snapshot):</strong>
+                <strong className="text-blue-900 block font-semibold">Registro de Integridad Histórica (Patrón Snapshot):</strong>
                 <span>
                   Este comprobante utiliza datos congelados en el momento exacto de su emisión. Cualquier modificación futura en los catálogos maestros de clientes o productos no alterará el contenido histórico de este documento.
                 </span>

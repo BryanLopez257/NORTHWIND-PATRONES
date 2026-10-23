@@ -41,6 +41,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     setValue,
     formState: { errors },
   } = useForm<CustomerFormData>({
+    mode: 'onTouched',
     resolver: zodResolver(customerSchema),
     defaultValues: {
       id: '',

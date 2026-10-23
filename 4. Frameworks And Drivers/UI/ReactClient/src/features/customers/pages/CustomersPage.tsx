@@ -36,6 +36,7 @@ import { cn } from '@/shared/utils/cn';
 
 export const CustomersPage: React.FC = () => {
   const [searchTermInput, setSearchTermInput] = useState('');
+  const [searchCriteria, setSearchCriteria] = useState<'all' | 'id' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename'>('all');
   const debouncedSearchTerm = useDebounce(searchTermInput, 350);
 
   const [customerTypeFilter, setCustomerTypeFilter] = useState('Todos');
@@ -60,6 +61,7 @@ export const CustomersPage: React.FC = () => {
 
   const filters: CustomerFilters = {
     searchTerm: debouncedSearchTerm,
+    criteria: searchCriteria !== 'all' ? searchCriteria : undefined,
     customerType: customerTypeFilter !== 'Todos' ? customerTypeFilter : undefined,
     balanceFilter: balanceFilter > 0 ? balanceFilter : undefined,
     minBalance: parsedMinBalance,
@@ -82,12 +84,33 @@ export const CustomersPage: React.FC = () => {
 
   const handleResetFilters = () => {
     setSearchTermInput('');
+    setSearchCriteria('all');
     setCustomerTypeFilter('Todos');
     setBalanceFilter(0);
     setMinBalanceInput('');
     setMaxBalanceInput('');
     setOrderBy('name');
     setAscending(true);
+  };
+
+  const getSearchPlaceholder = () => {
+    switch (searchCriteria) {
+      case 'id':
+        return 'Buscar por código (ej: ALFKI)...';
+      case 'identification':
+        return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
+      case 'name':
+        return 'Buscar por nombres y apellidos...';
+      case 'lastname':
+        return 'Buscar por primer apellido...';
+      case 'businessname':
+        return 'Buscar por razón social de la empresa...';
+      case 'tradename':
+        return 'Buscar por nombre comercial...';
+      case 'all':
+      default:
+        return 'Buscar por código, nombres o identificación...';
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -176,16 +199,43 @@ export const CustomersPage: React.FC = () => {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            {/* Criterio de Búsqueda */}
+            <div className="md:col-span-3">
+              <label htmlFor="filter-criteria" className="block text-xs font-semibold uppercase text-slate-500 mb-1">
+                Criterio de Búsqueda
+              </label>
+              <select
+                id="filter-criteria"
+                value={searchCriteria}
+                onChange={(e) => setSearchCriteria(e.target.value as any)}
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+              >
+                <optgroup label="Búsqueda General">
+                  <option value="all">🔍 Todos los campos</option>
+                  <option value="identification">🪪 Cédula / RUC</option>
+                  <option value="id">🏷️ Código ID</option>
+                </optgroup>
+                <optgroup label="Personas Naturales">
+                  <option value="name">👤 Nombres y Apellidos</option>
+                  <option value="lastname">👤 Solo Primer Apellido</option>
+                </optgroup>
+                <optgroup label="Empresas / Jurídicas">
+                  <option value="businessname">🏢 Razón Social</option>
+                  <option value="tradename">🏪 Nombre Comercial</option>
+                </optgroup>
+              </select>
+            </div>
+
             {/* Search Input */}
-            <div className="md:col-span-4">
+            <div className="md:col-span-3">
               <label htmlFor="search-customers" className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-                Búsqueda por Nombre o Código
+                Término a Buscar
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   id="search-customers"
-                  placeholder="Buscar por código o nombre de cliente..."
+                  placeholder={getSearchPlaceholder()}
                   value={searchTermInput}
                   onChange={(e) => setSearchTermInput(e.target.value)}
                   className="pl-9"
@@ -194,7 +244,7 @@ export const CustomersPage: React.FC = () => {
             </div>
 
             {/* Balance Status Filter */}
-            <div className="md:col-span-3">
+            <div className="md:col-span-2">
               <label htmlFor="filter-balance" className="block text-xs font-semibold uppercase text-slate-500 mb-1">
                 Estado de Saldo
               </label>
@@ -244,7 +294,7 @@ export const CustomersPage: React.FC = () => {
             </div>
 
             {/* Order By Filter & Reset */}
-            <div className="md:col-span-3 flex gap-2 items-center">
+            <div className="md:col-span-2 flex gap-2 items-center">
               <div className="flex-1">
                 <label htmlFor="filter-order" className="block text-xs font-semibold uppercase text-slate-500 mb-1">
                   Ordenar
@@ -437,7 +487,19 @@ export const CustomersPage: React.FC = () => {
                         {c.id}
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
-                        {c.name}
+                        <div>{c.name}</div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5 font-normal">
+                          {c.identification && (
+                            <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                              🪪 {c.identification}
+                            </span>
+                          )}
+                          {c.tradeName && (
+                            <span className="text-blue-600 font-medium">
+                              🏪 {c.tradeName}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {c.customerType === 'Empresa' ? (

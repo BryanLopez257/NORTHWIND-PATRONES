@@ -1,4 +1,4 @@
-namespace NorthWind.Sales.Backend.Repositories.Repositories;
+﻿namespace NorthWind.Sales.Backend.Repositories.Repositories;
 
 internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQueriesRepository
 {
@@ -95,13 +95,50 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var term = filter.SearchTerm.Trim();
-                query = query.Where(c => c.Name.Contains(term) || c.Id.Contains(term));
+                var criteria = filter.Criteria?.ToLowerInvariant();
+
+                query = criteria switch
+                {
+                    "identification" => query.Where(c => c.Identification.StartsWith(term)),
+                    "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.StartsWith(term)),
+                    "tradename" => query.Where(c => c.CustomerType == CustomerType.Legal && c.TradeName != null && c.TradeName.StartsWith(term)),
+                    "lastname" => query.Where(c => c.CustomerType == CustomerType.Natural && c.LastName != null && c.LastName.StartsWith(term)),
+                    "name" => query.Where(c =>
+                        c.CustomerType == CustomerType.Natural && (
+                            (c.LastName != null && c.LastName.StartsWith(term)) ||
+                            (c.SecondLastName != null && c.SecondLastName.StartsWith(term)) ||
+                            (c.FirstName != null && c.FirstName.StartsWith(term)) ||
+                            (c.SecondName != null && c.SecondName.StartsWith(term)))),
+                    "id" => query.Where(c => c.Id.StartsWith(term)),
+                    _ => query.Where(c =>
+                        c.Id.StartsWith(term) ||
+                        c.Identification.StartsWith(term) ||
+                        (c.BusinessName != null && c.BusinessName.StartsWith(term)) ||
+                        (c.TradeName != null && c.TradeName.StartsWith(term)) ||
+                        (c.LastName != null && c.LastName.StartsWith(term)) ||
+                        (c.FirstName != null && c.FirstName.StartsWith(term)))
+                };
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerType))
             {
-                var type = filter.CustomerType.Trim();
-                query = query.Where(c => c.CustomerType == type);
+                var typeStr = filter.CustomerType.Trim();
+                if (int.TryParse(typeStr, out int typeInt) && Enum.IsDefined(typeof(CustomerType), typeInt))
+                {
+                    query = query.Where(c => c.CustomerType == (CustomerType)typeInt);
+                }
+                else if (Enum.TryParse<CustomerType>(typeStr, true, out var parsedType))
+                {
+                    query = query.Where(c => c.CustomerType == parsedType);
+                }
+                else if (typeStr.Equals("Empresa", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.CustomerType == CustomerType.Legal);
+                }
+                else if (typeStr.Equals("Persona", StringComparison.OrdinalIgnoreCase) || typeStr.Equals("Natural", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.CustomerType == CustomerType.Natural);
+                }
             }
 
             if (filter.BalanceFilter.HasValue)
@@ -141,7 +178,18 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             query = query.OrderBy(c => c.Name);
         }
 
-        var projected = query.Select(c => new CustomerDto(c.Id, c.Name, c.CurrentBalance, c.CustomerType));
+        var projected = query.Select(c => new CustomerDto(
+            c.Id,
+            c.Name,
+            c.CurrentBalance,
+            c.CustomerType,
+            c.Identification,
+            c.FirstName,
+            c.SecondName,
+            c.LastName,
+            c.SecondLastName,
+            c.BusinessName,
+            c.TradeName));
         return await context.ToListAsync(projected);
     }
 
@@ -149,7 +197,18 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
     {
         var query = context.Customers
             .Where(c => c.Id == id)
-            .Select(c => new CustomerDto(c.Id, c.Name, c.CurrentBalance, c.CustomerType));
+            .Select(c => new CustomerDto(
+                c.Id,
+                c.Name,
+                c.CurrentBalance,
+                c.CustomerType,
+                c.Identification,
+                c.FirstName,
+                c.SecondName,
+                c.LastName,
+                c.SecondLastName,
+                c.BusinessName,
+                c.TradeName));
         return await context.FirstOrDefaultAsync(query);
     }
 

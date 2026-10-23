@@ -17,6 +17,7 @@ export const customersService = {
       if (typeof filters.maxBalance === 'number') params.maxBalance = filters.maxBalance;
       if (filters.orderBy) params.orderBy = filters.orderBy;
       if (typeof filters.ascending === 'boolean') params.ascending = filters.ascending;
+      if (filters.criteria && filters.criteria !== 'all') params.criteria = filters.criteria;
     }
 
     const response = await apiClient.get<CustomerDto[]>(ENDPOINTS.CUSTOMERS.BASE, { params });

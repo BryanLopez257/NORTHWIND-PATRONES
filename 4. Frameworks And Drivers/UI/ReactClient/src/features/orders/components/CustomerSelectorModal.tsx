@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User, X } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
@@ -16,6 +16,8 @@ export interface CustomerSelectorModalProps {
   selectedCustomerId?: string;
 }
 
+type SearchCriteriaType = 'all' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename' | 'id';
+
 export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   open,
   onOpenChange,
@@ -23,41 +25,76 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   selectedCustomerId,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchCriteria, setSearchCriteria] = useState<'all' | 'name' | 'id'>('all');
+  const [searchCriteria, setSearchCriteria] = useState<SearchCriteriaType>('all');
   const [typeFilter, setTypeFilter] = useState<'Todos' | 'Persona Natural' | 'Empresa'>('Todos');
   const [blockedWarning, setBlockedWarning] = useState<string | null>(null);
 
+  // Pasamos los filtros al hook del backend si es necesario, o filtramos en memoria
   const { data: customers = [], isLoading, error } = useCustomers();
 
-  // Live segmentation counters
+  // Contadores reactivos
   const counts = useMemo(() => {
     const todos = customers.length;
-    const personas = customers.filter((c) => c.customerType === 'Persona Natural').length;
-    const empresas = customers.filter((c) => c.customerType === 'Empresa').length;
+    const personas = customers.filter(
+      (c) => c.customerType === 'Persona Natural' || c.customerType === 1 || String(c.customerType) === '1'
+    ).length;
+    const empresas = customers.filter(
+      (c) => c.customerType === 'Empresa' || c.customerType === 2 || String(c.customerType) === '2'
+    ).length;
     return { todos, personas, empresas };
   }, [customers]);
 
-  // Real-time filtered customers
+  // Filtrado reactivo en memoria con reglas de segregación estrictas
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
-      // Type segmentation
-      if (typeFilter !== 'Todos' && c.customerType !== typeFilter) {
-        return false;
+      const isLegal = c.customerType === 'Empresa' || c.customerType === 2 || String(c.customerType) === '2';
+      const isNatural = !isLegal;
+
+      // Segmentación por botón superior
+      if (typeFilter === 'Persona Natural' && !isNatural) return false;
+      if (typeFilter === 'Empresa' && !isLegal) return false;
+
+      // Segregación estricta por criterio de búsqueda
+      if (searchCriteria === 'name' || searchCriteria === 'lastname') {
+        if (!isNatural) return false; // Nunca devolver jurídicas
+      }
+      if (searchCriteria === 'businessname' || searchCriteria === 'tradename') {
+        if (!isLegal) return false; // Nunca devolver naturales
       }
 
-      // Realtime text search by criterion
-      if (searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        if (searchCriteria === 'id') {
-          return c.id.toLowerCase().includes(term);
-        }
-        if (searchCriteria === 'name') {
-          return c.name.toLowerCase().includes(term);
-        }
-        return c.name.toLowerCase().includes(term) || c.id.toLowerCase().includes(term);
-      }
+      if (!searchTerm.trim()) return true;
 
-      return true;
+      const term = searchTerm.trim().toLowerCase();
+
+      switch (searchCriteria) {
+        case 'id':
+          return c.id.toLowerCase().startsWith(term);
+        case 'identification':
+          return (c.identification || '').toLowerCase().startsWith(term);
+        case 'name':
+          return (
+            (c.firstName || '').toLowerCase().startsWith(term) ||
+            (c.secondName || '').toLowerCase().startsWith(term) ||
+            (c.lastName || '').toLowerCase().startsWith(term) ||
+            (c.secondLastName || '').toLowerCase().startsWith(term) ||
+            c.name.toLowerCase().includes(term)
+          );
+        case 'lastname':
+          return (c.lastName || '').toLowerCase().startsWith(term);
+        case 'businessname':
+          return (c.businessName || '').toLowerCase().startsWith(term);
+        case 'tradename':
+          return (c.tradeName || '').toLowerCase().startsWith(term);
+        case 'all':
+        default:
+          return (
+            c.id.toLowerCase().startsWith(term) ||
+            (c.identification || '').toLowerCase().startsWith(term) ||
+            c.name.toLowerCase().includes(term) ||
+            (c.tradeName || '').toLowerCase().includes(term) ||
+            (c.businessName || '').toLowerCase().includes(term)
+          );
+      }
     });
   }, [customers, typeFilter, searchTerm, searchCriteria]);
 
@@ -74,9 +111,23 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   };
 
   const getPlaceholder = () => {
-    if (searchCriteria === 'id') return 'Buscar específicamente por código (ej: ALFKI)...';
-    if (searchCriteria === 'name') return 'Buscar específicamente por nombre o razón social...';
-    return 'Buscar por código o nombre de cliente...';
+    switch (searchCriteria) {
+      case 'id':
+        return 'Buscar por código (ej: ALFKI)...';
+      case 'identification':
+        return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
+      case 'name':
+        return 'Buscar por nombres y apellidos...';
+      case 'lastname':
+        return 'Buscar por primer apellido...';
+      case 'businessname':
+        return 'Buscar por razón social de la empresa...';
+      case 'tradename':
+        return 'Buscar por nombre comercial (ej. Taquería El Paso)...';
+      case 'all':
+      default:
+        return 'Buscar cliente por ID, nombres, razón social o identificación...';
+    }
   };
 
   return (
@@ -169,16 +220,26 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
             </button>
           </div>
 
-          {/* Barra de búsqueda con selector de criterio y botón limpiar */}
+          {/* Barra de búsqueda con selector de criterios categorizado */}
           <div className="flex items-center gap-2 flex-1 md:max-w-md">
             <select
               value={searchCriteria}
-              onChange={(e) => setSearchCriteria(e.target.value as 'all' | 'name' | 'id')}
-              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setSearchCriteria(e.target.value as SearchCriteriaType)}
+              className="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="all">🔍 Todos</option>
-              <option value="name">👤 Nombre</option>
-              <option value="id">🏷️ Código (ID)</option>
+              <optgroup label="Búsqueda General">
+                <option value="all">🔍 Todos los campos</option>
+                <option value="identification">💳 Cédula / RUC</option>
+                <option value="id">🏷️ Código (ID)</option>
+              </optgroup>
+              <optgroup label="Personas Naturales">
+                <option value="name">👤 Nombres y Apellidos</option>
+                <option value="lastname">👤 Primer Apellido</option>
+              </optgroup>
+              <optgroup label="Empresas / Jurídicas">
+                <option value="businessname">🏢 Razón Social</option>
+                <option value="tradename">🏪 Nombre Comercial</option>
+              </optgroup>
             </select>
 
             <div className="relative flex-1">
@@ -226,6 +287,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                 <TableRow>
                   <TableHead className="w-20">ID</TableHead>
                   <TableHead>Nombre / Razón Social</TableHead>
+                  <TableHead>Identificación</TableHead>
                   <TableHead>Tipo de Cliente</TableHead>
                   <TableHead className="text-right">Saldo Actual</TableHead>
                   <TableHead className="text-right w-44">Acción</TableHead>
@@ -235,6 +297,7 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                 {filteredCustomers.map((customer) => {
                   const isBlocked = customer.currentBalance > 0;
                   const isCurrentlySelected = selectedCustomerId === customer.id;
+                  const isLegal = customer.customerType === 'Empresa' || customer.customerType === 2 || String(customer.customerType) === '2';
 
                   return (
                     <TableRow
@@ -249,6 +312,11 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-slate-900">{customer.name}</div>
+                        {customer.tradeName && (
+                          <div className="text-[11px] text-slate-500">
+                            🏪 Comercial: {customer.tradeName}
+                          </div>
+                        )}
                         {isBlocked ? (
                           <span className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-0.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
@@ -261,8 +329,11 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                           </span>
                         )}
                       </TableCell>
+                      <TableCell className="font-mono text-xs text-slate-600">
+                        {customer.identification || '—'}
+                      </TableCell>
                       <TableCell>
-                        {customer.customerType === 'Empresa' ? (
+                        {isLegal ? (
                           <Badge variant="info" className="flex items-center w-fit space-x-1">
                             <Building2 className="h-3 w-3" />
                             <span>Empresa</span>
@@ -301,10 +372,11 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                           <Button
                             type="button"
                             size="sm"
+                            variant={isCurrentlySelected ? 'secondary' : 'default'}
                             onClick={() => handleSelect(customer)}
-                            className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-1 ml-auto"
+                            className="h-8 px-3 text-xs"
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <Check className="h-3.5 w-3.5 mr-1" />
                             <span>{isCurrentlySelected ? 'Seleccionado' : 'Seleccionar'}</span>
                           </Button>
                         )}
@@ -315,16 +387,6 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
               </TableBody>
             </Table>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-2">
-          <span className="text-xs text-slate-500">
-            Mostrando {filteredCustomers.length} de {customers.length} clientes
-          </span>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
         </div>
       </div>
     </Dialog>

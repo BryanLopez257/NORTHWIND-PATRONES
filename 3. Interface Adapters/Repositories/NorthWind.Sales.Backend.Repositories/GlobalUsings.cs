@@ -14,3 +14,4 @@ global using NorthWind.Sales.Backend.Repositories.Repositories;
 global using NorthWind.Sales.Entities.Dtos.Products;
 global using NorthWind.Sales.Entities.Dtos.Customers;
 global using NorthWind.Sales.Entities.Dtos.Invoices;
+global using NorthWind.Sales.Entities.Enums;

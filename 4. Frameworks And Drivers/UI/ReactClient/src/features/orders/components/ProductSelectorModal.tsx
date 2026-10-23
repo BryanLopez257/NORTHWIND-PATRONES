@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2, ArrowLeftRight } from 'lucide-react';
 import { useProducts } from '@/features/products/hooks/useProducts';
 import { ProductDto } from '@/features/products/types';
 import { Dialog } from '@/shared/ui/Dialog';
@@ -13,6 +13,8 @@ export interface ProductSelectorModalProps {
   onOpenChange: (open: boolean) => void;
   selectedProductIds: number[];
   onSelectProduct: (product: ProductDto) => void;
+  replacingProductId?: number | null;
+  replacingProductName?: string;
 }
 
 export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
@@ -20,12 +22,16 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   onOpenChange,
   selectedProductIds,
   onSelectProduct,
+  replacingProductId,
+  replacingProductName,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCriteria, setSearchCriteria] = useState<'all' | 'name' | 'id'>('all');
   const [onlyInStock, setOnlyInStock] = useState(true);
 
   const { data: products = [], isLoading, error } = useProducts();
+
+  const isReplaceMode = Boolean(replacingProductId);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -51,9 +57,20 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   }, [products, onlyInStock, searchTerm, searchCriteria]);
 
   const handleSelect = (product: ProductDto) => {
-    if (product.unitsInStock <= 0 || selectedProductIds.includes(product.id)) {
+    if (product.unitsInStock <= 0) {
       return;
     }
+
+    // En modo normal no se permite seleccionar un producto ya incluido
+    if (!isReplaceMode && selectedProductIds.includes(product.id)) {
+      return;
+    }
+
+    // En modo reemplazo no se permite seleccionar el mismo producto que se está reemplazando
+    if (isReplaceMode && product.id === replacingProductId) {
+      return;
+    }
+
     onSelectProduct(product);
   };
 
@@ -67,11 +84,29 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Catálogo de Productos para la Orden"
-      description="Seleccione los productos disponibles en inventario para agregar al carrito de compra."
+      title={
+        isReplaceMode
+          ? `Reemplazar Producto: ${replacingProductName || `#${replacingProductId}`}`
+          : 'Catálogo de Productos para la Orden'
+      }
+      description={
+        isReplaceMode
+          ? 'Seleccione el producto por el cual desea reemplazar este ítem. Si selecciona un producto ya existente en la orden, se incrementará su cantidad en 1.'
+          : 'Seleccione los productos disponibles en inventario para agregar al carrito de compra.'
+      }
       className="max-w-4xl"
     >
       <div className="space-y-4 pt-1">
+        {/* Banner de Modo Reemplazo */}
+        {isReplaceMode && (
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs sm:text-sm flex items-start space-x-2.5">
+            <ArrowLeftRight className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold">Modo Reemplazo:</span> El producto actual a reemplazar está deshabilitado. Puede elegir cualquier otro producto del catálogo o uno ya incluido en la orden (se le sumará +1 unidad).
+            </div>
+          </div>
+        )}
+
         {/* Controles de Búsqueda y Filtro de Stock */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           <div className="flex items-center gap-2 flex-1 sm:max-w-md">
@@ -142,30 +177,47 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
                   <TableHead>Producto</TableHead>
                   <TableHead className="text-right">Precio Unitario</TableHead>
                   <TableHead className="text-center">Stock Disp.</TableHead>
-                  <TableHead className="text-right w-36">Acción</TableHead>
+                  <TableHead className="text-right w-44">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
-                  const isAlreadySelected = selectedProductIds.includes(product.id);
+                  const isCurrentReplacingProduct = isReplaceMode && product.id === replacingProductId;
+                  const isAlreadyInCart = selectedProductIds.includes(product.id);
                   const isOutOfStock = product.unitsInStock <= 0;
 
                   return (
                     <TableRow
                       key={product.id}
-                      className={isAlreadySelected ? 'bg-amber-50/30' : ''}
+                      className={
+                        isCurrentReplacingProduct
+                          ? 'bg-slate-100/70 opacity-75'
+                          : isAlreadyInCart
+                          ? 'bg-amber-50/40'
+                          : ''
+                      }
                     >
                       <TableCell className="font-mono font-bold text-xs text-slate-500">
                         #{product.id}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-slate-800">{product.name}</div>
-                        {isAlreadySelected && (
+                        {isCurrentReplacingProduct ? (
+                          <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block"></span>
+                            Producto seleccionado para reemplazo
+                          </div>
+                        ) : isAlreadyInCart && isReplaceMode ? (
+                          <div className="text-[11px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5">
+                            <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                            Ya en la orden (al seleccionar se sumará +1)
+                          </div>
+                        ) : isAlreadyInCart ? (
                           <div className="text-[11px] text-amber-700 font-semibold flex items-center gap-1 mt-0.5">
                             <CheckCircle2 className="w-3 h-3 text-amber-600" />
                             Ya incluido en la orden
                           </div>
-                        )}
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold text-blue-700">
                         ${Number(product.unitPrice).toFixed(2)}
@@ -180,18 +232,56 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {isAlreadySelected ? (
-                          <span className="inline-flex items-center text-xs font-semibold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-md space-x-1">
-                            <Check className="h-3.5 w-3.5 text-amber-600" />
-                            <span>Agregado</span>
-                          </span>
-                        ) : (
+                        {/* 1. Si es el producto sobre el cual se dio clic en reemplazar: deshabilitado con cursor-not-allowed */}
+                        {isCurrentReplacingProduct ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={true}
+                            className="h-8 px-3 text-xs bg-slate-200 text-slate-500 border border-slate-300 opacity-60 cursor-not-allowed hover:bg-slate-200 ml-auto select-none"
+                            title="No se puede reemplazar por el mismo producto"
+                          >
+                            <span>Producto actual</span>
+                          </Button>
+                        ) : isReplaceMode && isAlreadyInCart ? (
+                          /* 2. Si es modo reemplazo y ya estaba en la lista: botón habilitado para sumar +1 */
                           <Button
                             type="button"
                             size="sm"
                             disabled={isOutOfStock}
                             onClick={() => handleSelect(product)}
-                            className="h-8 px-2.5 text-xs flex items-center space-x-1 ml-auto"
+                            className="h-8 px-2.5 text-xs flex items-center space-x-1 ml-auto bg-amber-600 hover:bg-amber-700 text-white"
+                            title="Reemplaza el producto anterior e incrementa en 1 la cantidad de este ítem"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Sumar +1</span>
+                          </Button>
+                        ) : isReplaceMode ? (
+                          /* 3. Si es modo reemplazo y no estaba en la lista: botón reemplazar */
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isOutOfStock}
+                            onClick={() => handleSelect(product)}
+                            className="h-8 px-2.5 text-xs flex items-center space-x-1 ml-auto bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                            <span>Reemplazar</span>
+                          </Button>
+                        ) : isAlreadyInCart ? (
+                          /* 4. Modo agregar normal y ya agregado */
+                          <span className="inline-flex items-center text-xs font-semibold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-md space-x-1">
+                            <Check className="h-3.5 w-3.5 text-amber-600" />
+                            <span>Agregado</span>
+                          </span>
+                        ) : (
+                          /* 5. Modo agregar normal */
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isOutOfStock}
+                            onClick={() => handleSelect(product)}
+                            className="h-8 px-2.5 text-xs flex items-center space-x-1 ml-auto bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <Plus className="h-3.5 w-3.5" />
                             <span>Agregar</span>

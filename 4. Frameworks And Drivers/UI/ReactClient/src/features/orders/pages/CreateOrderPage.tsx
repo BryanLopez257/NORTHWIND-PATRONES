@@ -14,6 +14,7 @@ import {
   MapPin,
   RefreshCw,
   UserPlus,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
@@ -71,6 +72,7 @@ export const CreateOrderPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
   const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
+  const [itemToReplace, setItemToReplace] = useState<CartItem | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 
   // Success Voucher Modal State
@@ -259,6 +261,64 @@ export const CreateOrderPage: React.FC = () => {
     setCartItems((prev) => [...prev, newItem]);
   };
 
+  const handleStartReplace = (item: CartItem) => {
+    setItemToReplace(item);
+    setIsCatalogOpen(true);
+  };
+
+  const handleSelectOrReplaceProduct = (product: ProductDto) => {
+    if (itemToReplace) {
+      const targetId = itemToReplace.productId;
+      const newProductId = product.id;
+
+      // Si selecciona un producto que YA estaba en la lista de la orden
+      const alreadyInCart = cartItems.find((i) => i.productId === newProductId);
+
+      if (alreadyInCart) {
+        // Remueve el producto anterior y simplemente aumenta en 1 la cantidad del existente
+        setCartItems((prev) =>
+          prev
+            .filter((i) => i.productId !== targetId)
+            .map((i) => {
+              if (i.productId === newProductId) {
+                const newQty = i.quantity + 1;
+                return {
+                  ...i,
+                  quantity: newQty,
+                  subTotal: Math.round(i.unitPrice * newQty * 100) / 100,
+                };
+              }
+              return i;
+            })
+        );
+      } else {
+        // Reemplaza el ítem en la lista por el nuevo producto
+        setCartItems((prev) =>
+          prev.map((i) => {
+            if (i.productId === targetId) {
+              return {
+                productId: product.id,
+                productName: product.name,
+                unitPrice: product.unitPrice,
+                unitsInStock: product.unitsInStock,
+                quantity: 1,
+                subTotal: product.unitPrice,
+              };
+            }
+            return i;
+          })
+        );
+      }
+
+      setItemToReplace(null);
+      setIsCatalogOpen(false);
+      return;
+    }
+
+    // Modo normal: agregar
+    handleAddProduct(product);
+  };
+
   const handleUpdateQuantity = (productId: number, newQtyNumber: number) => {
     let qty = isNaN(newQtyNumber) ? 1 : newQtyNumber;
     if (qty < 1) qty = 1;
@@ -307,6 +367,7 @@ export const CreateOrderPage: React.FC = () => {
     setShipCountry('');
     setShipPostalCode('');
     setCartItems([]);
+    setItemToReplace(null);
     setTouched({});
     setFormError(null);
   };
@@ -791,7 +852,10 @@ export const CreateOrderPage: React.FC = () => {
                 type="button"
                 variant="default"
                 size="sm"
-                onClick={() => setIsCatalogOpen(true)}
+                onClick={() => {
+                  setItemToReplace(null);
+                  setIsCatalogOpen(true);
+                }}
                 disabled={!selectedCustomer || Boolean(customerLookupError) || hasPendingBalance}
                 title={
                   !selectedCustomer || Boolean(customerLookupError) || hasPendingBalance
@@ -839,7 +903,7 @@ export const CreateOrderPage: React.FC = () => {
                       <TableHead className="text-center">Stock Disp.</TableHead>
                       <TableHead className="text-center w-40">Cantidad</TableHead>
                       <TableHead className="text-right">Subtotal ($)</TableHead>
-                      <TableHead className="text-center w-16">Acción</TableHead>
+                      <TableHead className="text-center w-24">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -903,16 +967,28 @@ export const CreateOrderPage: React.FC = () => {
                             ${Number(item.subTotal).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setItemToDelete(item)}
-                              className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
-                              title="Eliminar de la orden"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-center space-x-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStartReplace(item)}
+                                className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                title="Reemplazar producto"
+                              >
+                                <ArrowLeftRight className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setItemToDelete(item)}
+                                className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                title="Eliminar de la orden"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -973,9 +1049,16 @@ export const CreateOrderPage: React.FC = () => {
       {/* Product Catalog Picker Dialog */}
       <ProductSelectorModal
         open={isCatalogOpen}
-        onOpenChange={setIsCatalogOpen}
+        onOpenChange={(open) => {
+          setIsCatalogOpen(open);
+          if (!open) {
+            setItemToReplace(null);
+          }
+        }}
         selectedProductIds={cartItems.map((i) => i.productId)}
-        onSelectProduct={handleAddProduct}
+        onSelectProduct={handleSelectOrReplaceProduct}
+        replacingProductId={itemToReplace?.productId}
+        replacingProductName={itemToReplace?.productName}
       />
 
       {/* Confirmation Dialog: Delete Cart Item */}

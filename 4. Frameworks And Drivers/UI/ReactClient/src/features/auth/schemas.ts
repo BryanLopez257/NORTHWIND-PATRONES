@@ -4,8 +4,8 @@ import { EMOJI_REGEX } from '@/core/utils/inputFilters';
 // Solo letras en español (incluyendo tildes y diéresis) y espacios
 const NAME_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
 
-// Email estricto: solo letras, números, punto (.) y arroba (@), sin espacios ni emojis
-const EMAIL_STRICT_REGEX = /^[a-zA-Z0-9.@]+$/;
+// Email conforme a RFC 5321 / 3696: letras, números, punto (.), subdireccionamiento (+), guiones (-), subguión (_) y arroba (@)
+const EMAIL_STRICT_REGEX = /^[a-zA-Z0-9.@+_\-]+$/;
 
 // Sin emojis
 const HAS_NO_EMOJI = (val: string) => !EMOJI_REGEX.test(val);
@@ -14,7 +14,7 @@ export const loginSchema = z.object({
   email: z
     .string()
     .min(1, 'El correo es requerido.')
-    .max(100, 'El correo no debe superar los 100 caracteres.')
+    .max(254, 'El correo no debe superar los 254 caracteres.')
     .email('El formato de correo no es válido.')
     .refine((val) => !/\s/.test(val), 'El correo no debe contener espacios.'),
   password: z
@@ -84,11 +84,11 @@ export const registerSchema = z
       .string()
       .trim()
       .min(1, 'El correo es requerido.')
-      .max(100, 'El correo no debe superar los 100 caracteres.')
+      .max(254, 'El correo no debe superar los 254 caracteres.')
       .email('El formato de correo no es válido.')
       .refine(
         (val) => EMAIL_STRICT_REGEX.test(val) && HAS_NO_EMOJI(val) && !/\s/.test(val),
-        'El correo solo puede contener letras, números, punto (.) y arroba (@). No se permiten otros caracteres especiales, espacios ni emojis.'
+        'El correo solo puede contener caracteres válidos (letras, números, punto, \'+\', \'-\', \'_\', \'@\'). No se permiten otros caracteres especiales, espacios ni emojis.'
       ),
     password: z
       .string()

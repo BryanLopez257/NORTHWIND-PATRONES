@@ -57,7 +57,7 @@ export const RegisterPage: React.FC = () => {
         secondName: data.secondName?.trim() || undefined,
         lastName: data.lastName.trim(),
         secondLastName: data.secondLastName?.trim() || undefined,
-        email: data.email.trim(),
+        email: data.email.trim().toLowerCase(),
         password: data.password,
       });
 
@@ -220,21 +220,21 @@ export const RegisterPage: React.FC = () => {
               <Input
                 id="reg-email"
                 label="Correo electrónico *"
-                type="text"
+                type="email"
                 placeholder="ejemplo@northwind.com"
-                maxLength={100}
+                maxLength={254}
                 autoComplete="email"
                 error={errors.email?.message}
                 onKeyDown={allowEmailChars}
                 {...register('email', {
                   onChange: (e) => {
-                    const clean = sanitizeEmailChars(e.target.value).slice(0, 100);
+                    const clean = sanitizeEmailChars(e.target.value).slice(0, 254);
                     e.target.value = clean;
                     setValue('email', clean, { shouldValidate: true });
                   },
                 })}
               />
-              <p className="text-[11px] text-slate-500 mt-1">Solo letras, números, punto (.) y arroba (@). Máx. 100 caracteres.</p>
+              <p className="text-[11px] text-slate-500 mt-1">Permite letras, números, '.', '+', '-', '_' y '@'. Máx. 254 caracteres.</p>
             </div>
 
             {/* Contraseñas */}

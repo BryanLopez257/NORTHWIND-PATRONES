@@ -89,6 +89,16 @@ export const CreateOrderPage: React.FC = () => {
     return customers.find((c) => c.id.toUpperCase() === idToSearch);
   }, [customers, selectedCustomerId, customerInput]);
 
+  // Sincronización automática de Cédula/RUC desde la ficha del cliente seleccionado (ReadOnly por integridad fiscal)
+  React.useEffect(() => {
+    if (selectedCustomer) {
+      setCustomerDocument(selectedCustomer.identification || '');
+      markTouched('document');
+    } else if (!customerInput.trim()) {
+      setCustomerDocument('');
+    }
+  }, [selectedCustomer, customerInput]);
+
   // Credit policy validation
   const hasPendingBalance = (selectedCustomer?.currentBalance ?? 0) > 0;
 
@@ -97,12 +107,14 @@ export const CreateOrderPage: React.FC = () => {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) {
       setSelectedCustomerId('');
+      setCustomerDocument('');
       setCustomerLookupError('Debe ingresar o seleccionar un código de cliente (5 letras).');
       return;
     }
 
     if (cleanCode.length < 5) {
       setSelectedCustomerId('');
+      setCustomerDocument('');
       setCustomerLookupError('El código de cliente debe contener exactamente 5 letras mayúsculas.');
       return;
     }
@@ -110,12 +122,14 @@ export const CreateOrderPage: React.FC = () => {
     const found = customers.find((c) => c.id.toUpperCase() === cleanCode);
     if (!found) {
       setSelectedCustomerId('');
+      setCustomerDocument('');
       setCustomerLookupError(`El cliente con código '${cleanCode}' no existe en la base de datos.`);
       return;
     }
 
     if (found.currentBalance > 0) {
       setSelectedCustomerId(found.id);
+      setCustomerDocument(found.identification || '');
       setCustomerLookupError(
         `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${found.currentBalance.toFixed(
           2
@@ -125,6 +139,8 @@ export const CreateOrderPage: React.FC = () => {
     }
 
     setSelectedCustomerId(found.id);
+    setCustomerDocument(found.identification || '');
+    markTouched('document');
     setCustomerLookupError(null);
   };
 
@@ -231,15 +247,10 @@ export const CreateOrderPage: React.FC = () => {
   const handleSelectCustomerFromModal = (customer: CustomerDto) => {
     setCustomerInput(customer.id.toUpperCase());
     setSelectedCustomerId(customer.id.toUpperCase());
+    setCustomerDocument(customer.identification || '');
     setCustomerLookupError(null);
     markTouched('customer');
-    setFormError(null);
-  };
-
-  // Sanitized document change (digits only, max 13)
-  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const digitsOnly = sanitizeDigits(e.target.value).slice(0, 13);
-    setCustomerDocument(digitsOnly);
+    markTouched('document');
     setFormError(null);
   };
 
@@ -593,6 +604,7 @@ export const CreateOrderPage: React.FC = () => {
                         validateCustomerCode(clean);
                       } else {
                         setSelectedCustomerId('');
+                        setCustomerDocument('');
                         setCustomerLookupError(null);
                       }
                       setFormError(null);
@@ -629,35 +641,40 @@ export const CreateOrderPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Customer Document (Cedula / RUC) */}
+              {/* Customer Document (Cedula / RUC) - ReadOnly vinculado a la ficha del cliente */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                  Cédula / RUC (Ecuador) <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Cédula / RUC (Ecuador) <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-medium">Solo lectura (Ficha cliente)</span>
+                </div>
                 <Input
                   id="customerDocument"
                   type="text"
-                  placeholder="10 dígitos (Cédula) o 13 dígitos (RUC)"
+                  placeholder={
+                    selectedCustomer
+                      ? 'Sin identificación registrada'
+                      : 'Se cargará automáticamente al seleccionar cliente'
+                  }
                   value={customerDocument}
-                  onChange={handleDocumentChange}
-                  onBlur={() => markTouched('document')}
-                  onKeyDown={allowOnlyDigits}
-                  maxLength={13}
-                  className={`font-mono ${
-                    touched.document && !documentValidation.isValid
-                      ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-400'
+                  readOnly
+                  tabIndex={-1}
+                  className={`font-mono bg-slate-100 text-slate-700 cursor-not-allowed border-slate-300 select-none ${
+                    selectedCustomer && !customerDocument
+                      ? 'border-rose-400'
                       : customerDocument && documentValidation.isValid
-                      ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500'
+                      ? 'border-emerald-500 text-slate-800 font-bold'
                       : ''
                   }`}
                   required
                 />
-                {customerDocument && (
+                {customerDocument ? (
                   <div className="mt-1 flex items-center space-x-1.5 text-xs">
                     {documentValidation.isValid ? (
                       <span className="text-emerald-700 font-medium flex items-center space-x-1">
                         <CheckCircle className="h-3.5 w-3.5" />
-                        <span>{documentValidation.message}</span>
+                        <span>{documentValidation.message} (Verificada en BD)</span>
                       </span>
                     ) : (
                       <span className="text-rose-600 font-medium flex items-center space-x-1">
@@ -666,11 +683,14 @@ export const CreateOrderPage: React.FC = () => {
                       </span>
                     )}
                   </div>
-                )}
-                {!customerDocument && touched.document && (
+                ) : selectedCustomer ? (
                   <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    Debe ingresar la cédula o RUC del cliente.
+                    El cliente seleccionado no posee cédula o RUC registrado en la base de datos.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1">
+                    La identificación fiscal se vinculará automáticamente al seleccionar el cliente.
                   </p>
                 )}
               </div>

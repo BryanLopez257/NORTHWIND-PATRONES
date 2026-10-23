@@ -19,4 +19,17 @@ public class NorthWindMembershipContext : IdentityDbContext<NorthWindUser>
             warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         base.OnConfiguring(optionsBuilder);
     }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        builder.Entity<NorthWindUser>(b =>
+        {
+            b.Property(u => u.Email).HasMaxLength(254);
+            b.Property(u => u.NormalizedEmail).HasMaxLength(254);
+            b.Property(u => u.UserName).HasMaxLength(254);
+            b.Property(u => u.NormalizedUserName).HasMaxLength(254);
+        });
+    }
 }

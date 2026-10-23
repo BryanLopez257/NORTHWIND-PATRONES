@@ -22,7 +22,7 @@ internal class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.CustomerFullNameSnapshot).HasMaxLength(100);
         builder.Property(i => i.CustomerAddressSnapshot).HasMaxLength(200);
         builder.Property(i => i.CustomerPhoneSnapshot).HasMaxLength(50);
-        builder.Property(i => i.CustomerEmailSnapshot).HasMaxLength(100);
+        builder.Property(i => i.CustomerEmailSnapshot).HasMaxLength(254);
         builder.Property(i => i.SellerFullNameSnapshot).HasMaxLength(100);
 
         builder.Property(i => i.SubTotal).HasPrecision(18, 2);

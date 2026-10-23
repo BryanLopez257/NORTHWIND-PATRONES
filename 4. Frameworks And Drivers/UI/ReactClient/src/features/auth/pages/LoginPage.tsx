@@ -42,7 +42,10 @@ export const LoginPage: React.FC = () => {
     setServerError(null);
     setIsLoading(true);
     try {
-      const response = await authService.login(data);
+      const response = await authService.login({
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      });
       login(response.accessToken);
 
       // Redirect to the originally attempted path or /create-order
@@ -100,15 +103,15 @@ export const LoginPage: React.FC = () => {
             <Input
               id="login-email"
               label="Correo electrónico *"
-              type="text"
+              type="email"
               autoComplete="email"
               placeholder="ejemplo@northwind.com"
-              maxLength={100}
+              maxLength={254}
               error={errors.email?.message}
               onKeyDown={allowEmailChars}
               {...register('email', {
                 onChange: (e) => {
-                  const clean = sanitizeEmailChars(e.target.value).slice(0, 100);
+                  const clean = sanitizeEmailChars(e.target.value).slice(0, 254);
                   e.target.value = clean;
                   setValue('email', clean, { shouldValidate: true });
                 },

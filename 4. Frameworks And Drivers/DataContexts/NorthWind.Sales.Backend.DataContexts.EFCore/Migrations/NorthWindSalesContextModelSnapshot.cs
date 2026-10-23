@@ -210,8 +210,8 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("CustomerEmailSnapshot")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
 
                     b.Property<string>("CustomerFullNameSnapshot")
                         .HasMaxLength(100)

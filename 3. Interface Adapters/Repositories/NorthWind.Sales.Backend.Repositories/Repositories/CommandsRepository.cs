@@ -1,4 +1,4 @@
-﻿namespace NorthWind.Sales.Backend.Repositories.Repositories;
+namespace NorthWind.Sales.Backend.Repositories.Repositories;
 
 internal class CommandsRepository(
     INorthWindSalesCommandsDataContext context,
@@ -293,7 +293,7 @@ internal class CommandsRepository(
             CustomerFullNameSnapshot = customer?.Name ?? invoiceDto.CustomerId,
             CustomerAddressSnapshot = invoiceDto.CustomerAddress ?? string.Empty,
             CustomerPhoneSnapshot = invoiceDto.CustomerPhone ?? string.Empty,
-            CustomerEmailSnapshot = invoiceDto.CustomerEmail ?? string.Empty,
+            CustomerEmailSnapshot = invoiceDto.CustomerEmail?.Trim().ToLowerInvariant() ?? string.Empty,
             SellerFullNameSnapshot = sellerName,
             SubTotal = subTotal,
             Tax = tax,

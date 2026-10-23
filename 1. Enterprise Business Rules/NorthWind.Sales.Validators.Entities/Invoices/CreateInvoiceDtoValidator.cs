@@ -18,5 +18,10 @@ internal class CreateInvoiceDtoValidator : AbstractModelValidator<CreateInvoiceD
 
         AddRuleForEach(c => c.Details)
             .SetValidator(detailValidator);
+
+        AddRuleFor(c => c.CustomerEmail)
+            .MaximumLength(254, InvoiceMessages.CustomerEmailTooLong)
+            .Must(email => string.IsNullOrWhiteSpace(email) || new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email.Trim()),
+                InvoiceMessages.CustomerEmailInvalid);
     }
 }

@@ -9,4 +9,6 @@ public static class InvoiceMessages
     public const string DuplicateProductsNotAllowed = "No se permiten productos duplicados en la misma factura.";
     public const string ProductIdRequired = "Debe especificar el identificador del producto.";
     public const string QuantityRequired = "La cantidad debe ser mayor a cero.";
+    public const string CustomerEmailTooLong = "El correo del cliente no debe superar los 254 caracteres.";
+    public const string CustomerEmailInvalid = "El formato del correo del cliente no es válido.";
 }

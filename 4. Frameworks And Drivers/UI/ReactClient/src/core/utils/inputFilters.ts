@@ -35,7 +35,7 @@ export const REGEX_PATTERNS = {
   digitsOnly: /^[0-9]$/,
   alphanumeric: /^[a-zA-Z0-9]$/,
   shipAddress: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#\-\/°]$/,
-  emailChars: /^[a-zA-Z0-9.@]$/,
+  emailChars: /^[a-zA-Z0-9.@+_\-]$/,
 };
 
 // ==========================================
@@ -134,7 +134,7 @@ export const sanitizeAddress = (value: string): string => {
 export const sanitizeEmailChars = (value: string): string => {
   if (!value) return '';
   return value
-    .replace(/[^a-zA-Z0-9.@]/g, '')
+    .replace(/[^a-zA-Z0-9.@+_\-]/g, '')
     .replace(new RegExp(EMOJI_REGEX, 'g'), '')
     .replace(/\s/g, '');
 };

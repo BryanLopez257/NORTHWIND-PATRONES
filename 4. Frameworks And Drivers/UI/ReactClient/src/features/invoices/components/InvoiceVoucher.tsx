@@ -22,7 +22,6 @@ export interface InvoiceVoucherProps {
 
 export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
   invoice,
-  onClose,
   showPrintButton = true,
 }) => {
   const handlePrint = () => {
@@ -61,11 +60,6 @@ export const InvoiceVoucher: React.FC<InvoiceVoucherProps> = ({
             >
               <Printer className="h-4 w-4" />
               <span>Imprimir Comprobante</span>
-            </Button>
-          )}
-          {onClose && (
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cerrar
             </Button>
           )}
         </div>

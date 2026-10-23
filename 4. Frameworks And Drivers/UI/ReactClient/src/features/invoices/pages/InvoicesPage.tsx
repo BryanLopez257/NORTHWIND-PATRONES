@@ -9,10 +9,10 @@ import {
   Printer,
   RefreshCw,
   Building2,
-  Hash,
   AlertCircle,
   ShoppingCart,
   User,
+  X,
 } from 'lucide-react';
 import { useInvoices } from '../hooks/useInvoices';
 import { InvoiceResponseDto } from '../types';
@@ -25,11 +25,23 @@ import { Dialog } from '@/shared/ui/Dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/Table';
 
 export const InvoicesPage: React.FC = () => {
-  const [invoiceNumberQuery, setInvoiceNumberQuery] = useState('');
-  const [customerNameQuery, setCustomerNameQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchCriteria, setSearchCriteria] = useState<'all' | 'invoiceNumber' | 'customer'>('all');
 
-  const debouncedInvoiceNumber = useDebounce(invoiceNumberQuery, 350);
-  const debouncedCustomerName = useDebounce(customerNameQuery, 350);
+  const debouncedSearchTerm = useDebounce(searchTerm, 350);
+
+  // Mapeo dinámico de filtros al servicio backend según el criterio seleccionado
+  const serverFilters = useMemo(() => {
+    const clean = debouncedSearchTerm.trim();
+    if (!clean) return {};
+    if (searchCriteria === 'invoiceNumber') {
+      return { invoiceNumber: clean };
+    }
+    if (searchCriteria === 'customer') {
+      return { customerName: clean };
+    }
+    return {};
+  }, [debouncedSearchTerm, searchCriteria]);
 
   const {
     data: invoices = [],
@@ -37,21 +49,36 @@ export const InvoicesPage: React.FC = () => {
     isFetching,
     error,
     refetch,
-  } = useInvoices({
-    invoiceNumber: debouncedInvoiceNumber,
-    customerName: debouncedCustomerName,
-  });
+  } = useInvoices(serverFilters);
 
-  // Client-side filter to also support searching by customerId seamlessly
+  // Filtrado reactivo en el cliente para soporte exhaustivo y fluido
   const filteredInvoices = useMemo(() => {
-    if (!customerNameQuery.trim()) return invoices;
-    const term = customerNameQuery.trim().toLowerCase();
-    return invoices.filter(
-      (inv) =>
-        (inv.customerFullName && inv.customerFullName.toLowerCase().includes(term)) ||
-        (inv.customerId && inv.customerId.toLowerCase().includes(term))
-    );
-  }, [invoices, customerNameQuery]);
+    if (!searchTerm.trim()) return invoices;
+    const term = searchTerm.trim().toLowerCase();
+
+    return invoices.filter((inv) => {
+      const invNum = (inv.invoiceNumber || `FAC-${inv.id}`).toLowerCase();
+      const invId = String(inv.id);
+      const custName = (inv.customerFullName || '').toLowerCase();
+      const custId = (inv.customerId || '').toLowerCase();
+      const doc = (inv.customerDocument || '').toLowerCase();
+
+      if (searchCriteria === 'invoiceNumber') {
+        return invNum.includes(term) || invId.includes(term);
+      }
+      if (searchCriteria === 'customer') {
+        return custName.includes(term) || custId.includes(term) || doc.includes(term);
+      }
+      // 'all' busca por cualquiera de los campos
+      return (
+        invNum.includes(term) ||
+        invId.includes(term) ||
+        custName.includes(term) ||
+        custId.includes(term) ||
+        doc.includes(term)
+      );
+    });
+  }, [invoices, searchTerm, searchCriteria]);
 
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
@@ -59,11 +86,6 @@ export const InvoicesPage: React.FC = () => {
   const handleOpenVoucher = (invoice: InvoiceResponseDto) => {
     setSelectedInvoice(invoice);
     setIsVoucherModalOpen(true);
-  };
-
-  const handleClearFilters = () => {
-    setInvoiceNumberQuery('');
-    setCustomerNameQuery('');
   };
 
   const formatDate = (dateStr: string) => {
@@ -86,7 +108,15 @@ export const InvoicesPage: React.FC = () => {
     }).format(val);
   };
 
-  const hasActiveFilters = invoiceNumberQuery.trim() !== '' || customerNameQuery.trim() !== '';
+  const getPlaceholder = () => {
+    if (searchCriteria === 'invoiceNumber') {
+      return 'Buscar específicamente por N° de factura (ej: FAC-0001)...';
+    }
+    if (searchCriteria === 'customer') {
+      return 'Buscar específicamente por cliente (ej: ALFKI o Alfreds)...';
+    }
+    return 'Buscar por N° factura, código o nombre de cliente...';
+  };
 
   return (
     <div className="space-y-6 w-full pb-12">
@@ -103,7 +133,7 @@ export const InvoicesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Link to="/createorder">
+          <Link to="/create-order">
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-xs">
               <ShoppingCart className="h-4 w-4 mr-1.5" />
               <span>Nueva Orden</span>
@@ -124,53 +154,53 @@ export const InvoicesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Centralized Search Bar with Category Combobox */}
       <Card className="border-slate-200 shadow-xs">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Número de Factura
-              </label>
-              <div className="relative">
-                <Hash className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="flex items-center gap-2 flex-1 max-w-2xl">
+              <select
+                value={searchCriteria}
+                onChange={(e) => setSearchCriteria(e.target.value as 'all' | 'invoiceNumber' | 'customer')}
+                className="text-xs h-10 rounded-lg border border-slate-300 bg-white px-3 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
+              >
+                <option value="all">🔍 Todos</option>
+                <option value="invoiceNumber">🧾 N° Factura</option>
+                <option value="customer">👤 Cliente</option>
+              </select>
+
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder="Ej. FAC-0001..."
-                  value={invoiceNumberQuery}
-                  onChange={(e) => setInvoiceNumberQuery(e.target.value)}
-                  className="pl-9"
+                  placeholder={getPlaceholder()}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-8 h-10"
                 />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-2.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Cliente (Nombre o Código ID)
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Ej. Alfreds Futterkiste o ALFKI..."
-                  value={customerNameQuery}
-                  onChange={(e) => setCustomerNameQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              {hasActiveFilters && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearFilters}
-                  className="text-xs text-slate-500 hover:text-slate-800"
-                >
-                  Limpiar Filtros
-                </Button>
-              )}
-            </div>
+            {searchTerm && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm('')}
+                className="text-xs text-slate-500 hover:text-slate-800 self-start sm:self-center"
+              >
+                Limpiar Búsqueda
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -183,7 +213,7 @@ export const InvoicesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Invoices List Table with Distinct Columns for Customer Name and Tax Identification */}
+      {/* Invoices List Table */}
       <Card className="border-slate-200 shadow-xs">
         <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
@@ -207,11 +237,11 @@ export const InvoicesPage: React.FC = () => {
               <Receipt className="h-10 w-10 mx-auto text-slate-300" />
               <p className="font-medium text-slate-600">No se encontraron facturas registradas</p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                {hasActiveFilters
+                {searchTerm
                   ? 'No hay comprobantes que coincidan con los criterios de búsqueda aplicados.'
                   : 'Las órdenes de venta confirmadas se reflejarán automáticamente en esta vista.'}
               </p>
-              <Link to="/createorder">
+              <Link to="/create-order">
                 <Button size="sm" variant="outline" className="mt-2 text-blue-700 border-blue-200">
                   <ShoppingCart className="h-4 w-4 mr-1.5" />
                   <span>Emitir Primera Orden</span>
@@ -322,7 +352,6 @@ export const InvoicesPage: React.FC = () => {
         {selectedInvoice && (
           <InvoiceVoucher
             invoice={selectedInvoice}
-            onClose={() => setIsVoucherModalOpen(false)}
             showPrintButton={true}
           />
         )}

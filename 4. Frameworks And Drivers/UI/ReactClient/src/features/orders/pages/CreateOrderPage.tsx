@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   MapPin,
   RefreshCw,
-  Users,
+  UserPlus,
 } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
@@ -549,8 +549,8 @@ export const CreateOrderPage: React.FC = () => {
                     onClick={() => setShowCustomerModal(true)}
                     className="whitespace-nowrap flex items-center shrink-0 border-slate-300 hover:bg-slate-50"
                   >
-                    <Users className="w-4 h-4 mr-1.5 text-blue-600" />
-                    Buscar Cliente
+                    <UserPlus className="w-4 h-4 mr-1.5 text-blue-600" />
+                    Agregar cliente
                   </Button>
                 </div>
 
@@ -1029,7 +1029,6 @@ export const CreateOrderPage: React.FC = () => {
         {issuedInvoice && (
           <InvoiceVoucher
             invoice={issuedInvoice}
-            onClose={() => setVoucherModalOpen(false)}
             showPrintButton={true}
           />
         )}

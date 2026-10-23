@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
-import { LogIn, AlertCircle, ShieldCheck } from 'lucide-vue-next';
+import { LogIn, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui';
+import { allowEmailChars, handlePasteFilter, sanitizeEmail } from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { loginSchema, type LoginFormData } from '../schemas';
 
@@ -17,6 +18,7 @@ const formData = ref<LoginFormData>({
   password: '',
 });
 
+const showPassword = ref(false);
 const errors = ref<Record<string, string>>({});
 const serverError = ref<string | null>(null);
 const isLoading = ref(false);
@@ -24,6 +26,10 @@ const isLoading = ref(false);
 const registrationSuccess = computed(() => {
   return history.state?.registered === true || route.query.registered === 'true';
 });
+
+const handleEmailPaste = (event: ClipboardEvent) => {
+  handlePasteFilter(event, (text) => sanitizeEmail(text, 100));
+};
 
 const validateField = (field: keyof LoginFormData) => {
   const result = loginSchema.safeParse(formData.value);
@@ -102,27 +108,46 @@ const onSubmit = async () => {
         </div>
 
         <form @submit.prevent="onSubmit" class="space-y-4" novalidate>
-          <Input
-            id="login-email"
-            label="Correo"
-            type="email"
-            auto-complete="email"
-            placeholder="ejemplo@northwind.com"
-            :error="errors.email"
-            v-model="formData.email"
-            @blur="validateField('email')"
-          />
+          <div>
+            <Input
+              id="login-email"
+              label="Correo"
+              type="text"
+              auto-complete="email"
+              placeholder="ejemplo@northwind.com"
+              :max-length="100"
+              :error="errors.email"
+              v-model="formData.email"
+              @keydown="allowEmailChars"
+              @paste="handleEmailPaste"
+              @blur="validateField('email')"
+            />
+          </div>
 
-          <Input
-            id="login-password"
-            label="Contraseña"
-            type="password"
-            auto-complete="current-password"
-            placeholder="••••••••"
-            :error="errors.password"
-            v-model="formData.password"
-            @blur="validateField('password')"
-          />
+          <div>
+            <Input
+              id="login-password"
+              label="Contraseña"
+              :type="showPassword ? 'text' : 'password'"
+              auto-complete="current-password"
+              placeholder="••••••••"
+              :error="errors.password"
+              v-model="formData.password"
+              @blur="validateField('password')"
+            >
+              <template #suffix>
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="text-slate-400 hover:text-slate-600 focus:outline-none"
+                  @click="showPassword = !showPassword"
+                >
+                  <Eye v-if="!showPassword" class="h-4 w-4" />
+                  <EyeOff v-else class="h-4 w-4" />
+                </button>
+              </template>
+            </Input>
+          </div>
 
           <Button type="submit" class="w-full mt-2" :is-loading="isLoading">
             <LogIn class="h-4 w-4 mr-2" />

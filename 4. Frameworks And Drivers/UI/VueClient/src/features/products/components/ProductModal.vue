@@ -3,6 +3,13 @@ import { ref, watch, computed } from 'vue';
 import { AlertCircle } from 'lucide-vue-next';
 import { Dialog, Input, Button } from '@/shared/ui';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
+import {
+  blockEmojis,
+  sanitizeRejectEmojis,
+  allowOnlyDigits,
+  sanitizeDigits,
+  handlePasteFilter,
+} from '@/core/utils/inputFilters';
 import type { ProductDto } from '../types';
 import { productSchema, type ProductFormData } from '../schemas';
 import { useCreateProduct, useUpdateProduct } from '../composables/useProducts';
@@ -61,6 +68,23 @@ watch(
   },
   { immediate: true }
 );
+
+const handleNameInput = (val: string) => {
+  formData.value.name = sanitizeRejectEmojis(val).slice(0, 40);
+};
+
+const handleNamePaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeRejectEmojis(text).slice(0, 40));
+};
+
+const handleStockInput = (val: string | number) => {
+  const digits = sanitizeDigits(String(val));
+  formData.value.unitsInStock = digits ? parseInt(digits, 10) : 0;
+};
+
+const handleStockPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeDigits(text));
+};
 
 const onSubmit = async () => {
   serverError.value = null;
@@ -135,14 +159,20 @@ const onSubmit = async () => {
     </div>
 
     <form @submit.prevent="onSubmit" class="space-y-4">
-      <Input
-        id="product-name"
-        label="Nombre del Producto *"
-        placeholder="Chai"
-        :max-length="40"
-        :error="errors.name"
-        v-model="formData.name"
-      />
+      <div>
+        <Input
+          id="product-name"
+          label="Nombre del Producto *"
+          placeholder="Chai"
+          :max-length="40"
+          :error="errors.name"
+          :model-value="formData.name"
+          @update:model-value="handleNameInput"
+          @keydown="blockEmojis"
+          @paste="handleNamePaste"
+        />
+        <p class="text-[11px] text-slate-500 mt-1">Máx. 40 caracteres. Sin emojis ni pictogramas.</p>
+      </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
@@ -156,17 +186,20 @@ const onSubmit = async () => {
           v-model="formData.unitPrice"
         />
 
-        <Input
-          id="product-stock"
-          label="Unidades en Stock *"
-          type="number"
-          step="1"
-          min="0"
-          max="32767"
-          placeholder="39"
-          :error="errors.unitsInStock"
-          v-model="formData.unitsInStock"
-        />
+        <div>
+          <Input
+            id="product-stock"
+            label="Unidades en Stock *"
+            type="text"
+            placeholder="39"
+            :error="errors.unitsInStock"
+            :model-value="formData.unitsInStock"
+            @update:model-value="handleStockInput"
+            @keydown="allowOnlyDigits"
+            @paste="handleStockPaste"
+          />
+          <p class="text-[11px] text-slate-500 mt-1">Entero mayor o igual a 0.</p>
+        </div>
       </div>
 
       <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">

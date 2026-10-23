@@ -1,6 +1,9 @@
 /**
- * Validador de Cédula y RUC de Ecuador
- * Algoritmos oficiales basados en Módulo 10 y Módulo 11.
+ * ecuadorianIdValidator.ts
+ * ============================================================================
+ * Validador Oficial de Cédula y RUC de la República del Ecuador.
+ * Algoritmos basados en Módulo 10 y Módulo 11 según normativa del SRI / Registro Civil.
+ * ============================================================================
  */
 
 export interface ValidationResult {
@@ -10,8 +13,8 @@ export interface ValidationResult {
 }
 
 /**
- * Valida una cédula ecuatoriana (10 dígitos numéricos).
- * Aplica algoritmo de Módulo 10 con coeficientes 2, 1 alternados.
+ * Validador de Cédula (10 dígitos numéricos).
+ * Coeficientes: [2, 1, 2, 1, 2, 1, 2, 1, 2] alternados, módulo 10.
  */
 export function validateCedula(cedula: string): ValidationResult {
   const clean = cedula?.trim() || '';
@@ -52,11 +55,13 @@ export function validateCedula(cedula: string): ValidationResult {
 }
 
 /**
- * Valida un RUC ecuatoriano (13 dígitos numéricos).
- * Clasifica y valida según:
- * 1. Persona Natural (3er dígito < 6): Cédula válida + sufijo 001.
- * 2. Sociedad Privada / Extranjera (3er dígito = 9): Módulo 11 con 9 coeficientes [4,3,2,7,6,5,4,3,2].
- * 3. Entidad Pública (3er dígito = 6): Módulo 11 con 8 coeficientes [3,2,7,6,5,4,3,2].
+ * Validador de RUC (13 dígitos numéricos).
+ * Clasifica y valida según los 3 tipos reconocidos por el SRI:
+ * 1. Persona Natural (tercer dígito < 6): Cédula válida + sufijo != 000.
+ * 2. Sociedad Privada / Extranjera (tercer dígito = 9): Módulo 11 [4, 3, 2, 7, 6, 5, 4, 3, 2].
+ *    Regla crítica: Si el residuo calculado resulta en 10, el RUC es inválido. Sufijo != 000.
+ * 3. Entidad Pública (tercer dígito = 6): Módulo 11 [3, 2, 7, 6, 5, 4, 3, 2].
+ *    Regla crítica: Invalida si el dígito calculado es 10. Sufijo != 0000.
  */
 export function validateRuc(ruc: string): ValidationResult {
   const clean = ruc?.trim() || '';
@@ -100,8 +105,13 @@ export function validateRuc(ruc: string): ValidationResult {
 
     const remainder = sum % 11;
     const calculated = remainder === 0 ? 0 : 11 - remainder;
-    const verifier = parseInt(clean[8], 10);
 
+    // Regla crítica: Invalida si el dígito calculado es 10
+    if (calculated === 10) {
+      return { isValid: false, error: 'RUC público inválido: el residuo de verificación resulta en 10.' };
+    }
+
+    const verifier = parseInt(clean[8], 10);
     if (verifier !== calculated) {
       return { isValid: false, error: 'Dígito verificador de RUC público no coincide.' };
     }
@@ -125,8 +135,13 @@ export function validateRuc(ruc: string): ValidationResult {
 
     const remainder = sum % 11;
     const calculated = remainder === 0 ? 0 : 11 - remainder;
-    const verifier = parseInt(clean[9], 10);
 
+    // Regla crítica: Si el residuo calculado resulta en 10, el RUC es inválido
+    if (calculated === 10) {
+      return { isValid: false, error: 'RUC privado/jurídico inválido: el dígito verificador calculado resulta en 10.' };
+    }
+
+    const verifier = parseInt(clean[9], 10);
     if (verifier !== calculated) {
       return { isValid: false, error: 'Dígito verificador de RUC privado/jurídico no coincide.' };
     }
@@ -139,7 +154,10 @@ export function validateRuc(ruc: string): ValidationResult {
     return { isValid: true, type: 'ruc_privada' };
   }
 
-  return { isValid: false, error: 'El tercer dígito del RUC no corresponde a ningún tipo válido (0-5 natural, 6 público, 9 jurídico).' };
+  return {
+    isValid: false,
+    error: 'El tercer dígito del RUC no corresponde a ningún tipo válido (0-5 natural, 6 público, 9 jurídico).',
+  };
 }
 
 /**
@@ -157,4 +175,21 @@ export function validateEcuadorianId(value: string): ValidationResult {
     isValid: false,
     error: 'La identificación debe tener 10 dígitos (Cédula) o 13 dígitos (RUC).',
   };
+}
+
+/**
+ * Clase oficial EcuadorianValidator con métodos estáticos requeridos
+ */
+export class EcuadorianValidator {
+  public static isValidCedula(cedula: string): boolean {
+    return validateCedula(cedula).isValid;
+  }
+
+  public static isValidRuc(ruc: string): boolean {
+    return validateRuc(ruc).isValid;
+  }
+
+  public static isValid(value: string): boolean {
+    return validateEcuadorianId(value).isValid;
+  }
 }

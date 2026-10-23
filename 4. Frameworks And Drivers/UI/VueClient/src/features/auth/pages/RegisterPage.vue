@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
-import { UserPlus, AlertCircle, CheckCircle2 } from 'lucide-vue-next';
+import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-vue-next';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui';
-import { allowOnlyLettersAndSpaces, sanitizeLettersAndSpaces } from '@/core/utils/inputFilters';
+import {
+  allowOnlyLettersAndSpaces,
+  sanitizeLettersAndSpaces,
+  allowEmailChars,
+  sanitizeEmail,
+  handlePasteFilter,
+} from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { registerSchema, type RegisterFormData } from '../schemas';
 
@@ -19,6 +25,9 @@ const formData = ref<RegisterFormData>({
   password: '',
   confirmPassword: '',
 });
+
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const errors = ref<Record<string, string>>({});
 const serverError = ref<string | null>(null);
@@ -39,6 +48,14 @@ const handleLastNameInput = (val: string) => {
 
 const handleSecondLastNameInput = (val: string) => {
   formData.value.secondLastName = sanitizeLettersAndSpaces(val).slice(0, 50);
+};
+
+const handleLettersPaste = (event: ClipboardEvent) => {
+  handlePasteFilter(event, (text) => sanitizeLettersAndSpaces(text).slice(0, 50));
+};
+
+const handleEmailPaste = (event: ClipboardEvent) => {
+  handlePasteFilter(event, (text) => sanitizeEmail(text, 100));
 };
 
 const validateAll = (): boolean => {
@@ -168,6 +185,7 @@ const onSubmit = async () => {
                 :model-value="formData.firstName"
                 @update:model-value="handleFirstNameInput"
                 @keydown="allowOnlyLettersAndSpaces"
+                @paste="handleLettersPaste"
               />
               <p class="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 50 caracteres). Sin emojis.</p>
             </div>
@@ -183,6 +201,7 @@ const onSubmit = async () => {
                 :model-value="formData.secondName"
                 @update:model-value="handleSecondNameInput"
                 @keydown="allowOnlyLettersAndSpaces"
+                @paste="handleLettersPaste"
               />
               <p class="text-[11px] text-slate-500 mt-1">Opcional. 2 a 50 caracteres. Sin emojis.</p>
             </div>
@@ -201,6 +220,7 @@ const onSubmit = async () => {
                 :model-value="formData.lastName"
                 @update:model-value="handleLastNameInput"
                 @keydown="allowOnlyLettersAndSpaces"
+                @paste="handleLettersPaste"
               />
               <p class="text-[11px] text-slate-500 mt-1">Solo letras y espacios (2 a 50 caracteres). Sin emojis.</p>
             </div>
@@ -216,6 +236,7 @@ const onSubmit = async () => {
                 :model-value="formData.secondLastName"
                 @update:model-value="handleSecondLastNameInput"
                 @keydown="allowOnlyLettersAndSpaces"
+                @paste="handleLettersPaste"
               />
               <p class="text-[11px] text-slate-500 mt-1">Opcional. 2 a 50 caracteres. Sin emojis.</p>
             </div>
@@ -226,12 +247,14 @@ const onSubmit = async () => {
             <Input
               id="reg-email"
               label="Correo *"
-              type="email"
+              type="text"
               placeholder="ejemplo@northwind.com"
               :max-length="100"
               auto-complete="email"
               :error="errors.email"
               v-model="formData.email"
+              @keydown="allowEmailChars"
+              @paste="handleEmailPaste"
             />
             <p class="text-[11px] text-slate-500 mt-1">Solo letras, números, punto (.) y arroba (@). Máx. 100 caracteres.</p>
           </div>
@@ -242,13 +265,25 @@ const onSubmit = async () => {
               <Input
                 id="reg-password"
                 label="Contraseña *"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 placeholder="Mínimo 6 caracteres"
                 :max-length="100"
                 auto-complete="new-password"
                 :error="errors.password"
                 v-model="formData.password"
-              />
+              >
+                <template #suffix>
+                  <button
+                    type="button"
+                    tabindex="-1"
+                    class="text-slate-400 hover:text-slate-600 focus:outline-none"
+                    @click="showPassword = !showPassword"
+                  >
+                    <Eye v-if="!showPassword" class="h-4 w-4" />
+                    <EyeOff v-else class="h-4 w-4" />
+                  </button>
+                </template>
+              </Input>
               <p class="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis.</p>
             </div>
 
@@ -256,13 +291,25 @@ const onSubmit = async () => {
               <Input
                 id="reg-confirm-password"
                 label="Confirmar contraseña *"
-                type="password"
+                :type="showConfirmPassword ? 'text' : 'password'"
                 placeholder="Repite la contraseña"
                 :max-length="100"
                 auto-complete="new-password"
                 :error="errors.confirmPassword"
                 v-model="formData.confirmPassword"
-              />
+              >
+                <template #suffix>
+                  <button
+                    type="button"
+                    tabindex="-1"
+                    class="text-slate-400 hover:text-slate-600 focus:outline-none"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    <Eye v-if="!showConfirmPassword" class="h-4 w-4" />
+                    <EyeOff v-else class="h-4 w-4" />
+                  </button>
+                </template>
+              </Input>
             </div>
           </div>
 

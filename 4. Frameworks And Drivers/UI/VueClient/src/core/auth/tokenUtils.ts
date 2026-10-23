@@ -1,6 +1,7 @@
 export interface UserProfile {
   email: string;
   name: string;
+  role?: string;
 }
 
 export interface DecodedTokenPayload {
@@ -9,10 +10,13 @@ export interface DecodedTokenPayload {
   FullName?: string;
   unique_name?: string;
   sub?: string;
+  role?: string | string[];
+  Role?: string | string[];
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'?: string;
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'?: string;
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'?: string;
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'?: string;
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'?: string | string[];
   exp?: number;
   [key: string]: unknown;
 }
@@ -38,13 +42,10 @@ export function parseJwt(token: string): DecodedTokenPayload | null {
 export function extractClaims(token: string): UserProfile {
   const payload = parseJwt(token);
   if (!payload) {
-    return { email: '', name: '' };
+    return { email: '', name: '', role: 'Vendedor' };
   }
 
-  // 1. Email detection:
-  // In ASP.NET Core Identity with JwtService.cs:
-  // new Claim(ClaimTypes.Name, userDto.Email) maps to:
-  // "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+  // 1. Detección de Email
   const email =
     payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
     payload.email ||
@@ -53,8 +54,7 @@ export function extractClaims(token: string): UserProfile {
     payload.sub ||
     '';
 
-  // 2. Name detection:
-  // Backend explicitly injects: new Claim("FullName", $"{userDto.FirstName} {userDto.LastName}")
+  // 2. Detección de Nombre
   const msGivenName = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
   const msSurname = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
   const combinedMsName = [msGivenName, msSurname].filter(Boolean).join(' ');
@@ -72,7 +72,16 @@ export function extractClaims(token: string): UserProfile {
     name = 'Usuario';
   }
 
-  return { email, name };
+  // 3. Detección de Rol (Claim de ASP.NET Core Identity / WS-Identity)
+  const rawRole =
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+    payload.role ||
+    payload.Role ||
+    'Vendedor';
+
+  const role = Array.isArray(rawRole) ? rawRole[0] : (typeof rawRole === 'string' ? rawRole : 'Vendedor');
+
+  return { email, name, role };
 }
 
 export function isTokenExpired(token: string): boolean {

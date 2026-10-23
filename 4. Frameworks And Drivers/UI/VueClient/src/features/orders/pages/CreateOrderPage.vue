@@ -4,15 +4,13 @@
  * VISTA: src/features/orders/pages/CreateOrderPage.vue
  * PROPÓSITO: Caso de uso principal - Creación y Emisión de Órdenes de Venta.
  * ============================================================================
- * Patrones y Buenas Prácticas Aplicadas:
- * 1. Clean Architecture: La vista solo interactúa con los composables/gateways (`useCreateOrder`, `useCustomers`).
- * 2. Validación Defensiva (Guards):
- *    - Validación de crédito: Bloquea clientes con saldo comercial pendiente (> $0.00).
- *    - Validación tributaria: Algoritmo oficial de Cédula (10 dígitos) y RUC (13 dígitos) para Ecuador.
- *      Si el cliente es de tipo "Empresa", exige obligatoriamente RUC de 13 dígitos.
- * 3. Carrito de Compras Reactivo: Control estricto de existencias (stock) por ítem.
- * 4. Patrón Snapshot (Comprobante Post-Emisión):
- *    Al emitir la orden con éxito, despliega el modal oficial `InvoiceVoucher` con datos congelados.
+ * Paridad 1:1 con la versión React:
+ * 1. Selección interactiva de cliente con validación reactiva de saldo deudor.
+ * 2. Contadores en vivo para Dirección (X/60), Ciudad (X/15), País (X/15) y Código Postal (X/10).
+ * 3. Líneas de productos con botones +/- y entrada manual por teclado.
+ *    Alerta reactiva "Excede stock disponible" y bloqueo de envío.
+ * 4. Banner reactivo para órdenes especiales (> 3 productos) con notificación Mailtrap.
+ * 5. Resumen económico (Base Imponible, IVA 15%, Total) y emisión de factura inmediata.
  */
 
 import { ref, computed } from 'vue';
@@ -24,7 +22,7 @@ import {
   Building2,
   Send,
   Loader2,
-  ShieldAlert,
+  Mail,
   MapPin,
   RefreshCw,
   Users,
@@ -57,12 +55,17 @@ import {
 } from '@/shared/ui';
 import { getErrorMessage } from '@/core/api/apiClient';
 import {
+  allowOnlyAlpha,
   allowOnlyLettersAndSpaces,
   allowOnlyDigits,
+  allowAlphanumeric,
   allowAddressChars,
+  sanitizeAlphaUpper,
   sanitizeLettersAndSpaces,
   sanitizeDigits,
+  sanitizeAlphanumeric,
   sanitizeAddress,
+  handlePasteFilter,
 } from '@/core/utils/inputFilters';
 
 // 1. Carga de clientes desde TanStack Query
@@ -70,7 +73,7 @@ const { data: customers } = useCustomers();
 const customerList = computed(() => customers.value ?? []);
 const createOrderMutation = useCreateOrder();
 
-// 2. Estado del Formulario: inicializados vacíos sin valores quemados (hardcodeados)
+// 2. Estado del Formulario
 const selectedCustomerId = ref<string>('');
 const showCustomerModal = ref<boolean>(false);
 const customerDocument = ref<string>('');
@@ -79,7 +82,7 @@ const shipCity = ref<string>('');
 const shipCountry = ref<string>('');
 const shipPostalCode = ref<string>('');
 
-// 3. Control de campos tocados (onBlur) para mostrar errores en el momento oportuno
+// 3. Control de campos tocados (onBlur)
 const touched = ref<Record<string, boolean>>({});
 const markTouched = (field: string) => {
   touched.value[field] = true;
@@ -91,7 +94,7 @@ const isCatalogOpen = ref<boolean>(false);
 const itemToDelete = ref<CartItem | null>(null);
 const showResetConfirm = ref<boolean>(false);
 
-// 5. Estado del Modal de Comprobante / Factura Emitida
+// 5. Estado del Modal de Factura Emitida
 const voucherModalOpen = ref<boolean>(false);
 const issuedInvoice = ref<InvoiceResponseDto | null>(null);
 
@@ -108,6 +111,26 @@ const selectedCustomer = computed<CustomerDto | undefined>(() => {
 
 // Regla de Negocio: Condición de Crédito (Saldo pendiente > 0 bloquea la venta)
 const hasPendingBalance = computed(() => (selectedCustomer.value?.currentBalance ?? 0) > 0);
+
+// Mensaje de validación del cliente
+const customerErrorMessage = computed(() => {
+  if (!selectedCustomerId.value) {
+    return touched.value.customer ? 'Debe seleccionar un cliente del catálogo.' : '';
+  }
+
+  if (selectedCustomerId.value.length === 5) {
+    if (!selectedCustomer.value) {
+      return `El cliente con código "${selectedCustomerId.value}" no existe en la base de datos.`;
+    }
+    if (selectedCustomer.value.currentBalance > 0) {
+      return `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${Number(selectedCustomer.value.currentBalance).toFixed(2)}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`;
+    }
+  } else if (touched.value.customer) {
+    return 'El código de cliente debe tener exactamente 5 letras.';
+  }
+
+  return '';
+});
 
 // Regla de Negocio: Validación de Cédula/RUC con algoritmo oficial de Ecuador
 const documentValidation = computed(() => {
@@ -153,10 +176,8 @@ const documentValidation = computed(() => {
 const errors = computed(() => {
   const errs: Record<string, string> = {};
 
-  if (touched.value.customer && !selectedCustomerId.value) {
-    errs.customer = 'Debe seleccionar un cliente.';
-  } else if (selectedCustomer.value && hasPendingBalance.value) {
-    errs.customer = `El cliente tiene un saldo pendiente de $${Number(selectedCustomer.value.currentBalance).toFixed(2)}. No puede emitir órdenes hasta regularizarlo.`;
+  if (customerErrorMessage.value) {
+    errs.customer = customerErrorMessage.value;
   }
 
   if (touched.value.customerDocument) {
@@ -171,21 +192,29 @@ const errors = computed(() => {
     const val = shipAddress.value.trim();
     if (!val) errs.shipAddress = 'La dirección es requerida.';
     else if (val.length < 5) errs.shipAddress = 'La dirección debe tener al menos 5 caracteres.';
+    else if (val.length > 60) errs.shipAddress = 'La dirección no puede exceder 60 caracteres.';
   }
 
   if (touched.value.shipCity) {
     const val = shipCity.value.trim();
     if (!val) errs.shipCity = 'La ciudad es requerida.';
     else if (val.length < 3) errs.shipCity = 'La ciudad debe tener al menos 3 caracteres.';
+    else if (val.length > 15) errs.shipCity = 'La longitud máxima de la ciudad es 15 caracteres.';
   }
 
   if (touched.value.shipCountry) {
     const val = shipCountry.value.trim();
     if (!val) errs.shipCountry = 'El país es requerido.';
     else if (val.length < 3) errs.shipCountry = 'El país debe tener al menos 3 caracteres.';
+    else if (val.length > 15) errs.shipCountry = 'La longitud máxima del país es 15 caracteres.';
   }
 
   return errs;
+});
+
+// Verificación de stock excedido
+const hasStockExceeded = computed(() => {
+  return cartItems.value.some((item) => item.quantity > item.unitsInStock);
 });
 
 // Cálculos económicos de la orden
@@ -205,33 +234,64 @@ const total = computed(() => {
 const isSubmitDisabled = computed(() => {
   return (
     !selectedCustomerId.value ||
+    selectedCustomerId.value.length !== 5 ||
+    !selectedCustomer.value ||
     hasPendingBalance.value ||
     !documentValidation.value.isValid ||
     !shipAddress.value.trim() ||
     shipAddress.value.trim().length < 5 ||
+    shipAddress.value.trim().length > 60 ||
     !shipCity.value.trim() ||
     shipCity.value.trim().length < 3 ||
+    shipCity.value.trim().length > 15 ||
     !shipCountry.value.trim() ||
     shipCountry.value.trim().length < 3 ||
+    shipCountry.value.trim().length > 15 ||
     cartItems.value.length === 0 ||
+    hasStockExceeded.value ||
+    cartItems.value.some((i) => i.quantity <= 0) ||
     createOrderMutation.isPending.value
   );
 });
 
-// Manejadores de interacción
-const handleSelectCustomer = (customer: CustomerDto) => {
-  if (customer.currentBalance > 0) return;
-  selectedCustomerId.value = customer.id;
-  markTouched('customer');
+// Manejadores de interacción de Cliente
+const handleCustomerIdInput = (val: string) => {
+  selectedCustomerId.value = sanitizeAlphaUpper(val, 5);
 };
 
+const handleCustomerIdPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeAlphaUpper(text, 5));
+};
+
+const handleSelectCustomer = (customer: CustomerDto) => {
+  selectedCustomerId.value = customer.id.toUpperCase();
+  markTouched('customer');
+  formError.value = null;
+};
+
+// Manejadores de interacción de Dirección y Destino
+const handleAddressPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeAddress(text, 60));
+};
+
+const handleCityPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeLettersAndSpaces(text).slice(0, 15));
+};
+
+const handleCountryPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeLettersAndSpaces(text).slice(0, 15));
+};
+
+const handlePostalPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeAlphanumeric(text).toUpperCase().slice(0, 10));
+};
+
+// Manejadores de Carrito de Compras
 const handleAddProduct = (product: ProductDto) => {
   const existing = cartItems.value.find((i) => i.productId === product.id);
   if (existing) {
-    if (existing.quantity < product.unitsInStock) {
-      existing.quantity += 1;
-      existing.subTotal = existing.quantity * existing.unitPrice;
-    }
+    existing.quantity += 1;
+    existing.subTotal = existing.quantity * existing.unitPrice;
   } else {
     cartItems.value.push({
       productId: product.id,
@@ -253,12 +313,18 @@ const handleUpdateQuantity = (productId: number, newQty: number) => {
     return;
   }
 
-  if (newQty > item.unitsInStock) {
-    item.quantity = item.unitsInStock;
-  } else {
-    item.quantity = newQty;
-  }
+  item.quantity = newQty;
   item.subTotal = item.quantity * item.unitPrice;
+};
+
+const handleManualQuantityInput = (productId: number, val: string) => {
+  const item = cartItems.value.find((i) => i.productId === productId);
+  if (!item) return;
+
+  const digits = sanitizeDigits(val);
+  const qty = digits ? parseInt(digits, 10) : 0;
+  item.quantity = qty;
+  item.subTotal = qty * item.unitPrice;
 };
 
 const confirmRemoveItem = () => {
@@ -295,6 +361,10 @@ const onSubmit = async () => {
   if (isSubmitDisabled.value) {
     if (cartItems.value.length === 0) {
       formError.value = 'Debe agregar al menos un producto al pedido antes de emitir la orden.';
+    } else if (hasStockExceeded.value) {
+      formError.value = 'Algunos productos exceden el stock disponible. Por favor ajuste las cantidades.';
+    } else if (hasPendingBalance.value) {
+      formError.value = 'No se puede emitir la orden: el cliente mantiene un saldo pendiente de pago.';
     } else {
       formError.value = 'Por favor complete todos los campos requeridos correctamente.';
     }
@@ -302,7 +372,7 @@ const onSubmit = async () => {
   }
 
   const payload: CreateOrderDto = {
-    customerId: selectedCustomerId.value,
+    customerId: selectedCustomerId.value.toUpperCase(),
     customerDocument: customerDocument.value.trim(),
     shipAddress: shipAddress.value.trim(),
     shipCity: shipCity.value.trim(),
@@ -374,19 +444,23 @@ const onSubmit = async () => {
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Selector de Cliente con Modal -->
+            <!-- Selector de Cliente con Input de 5 letras y Modal -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">
-                Cliente Comercial *
+                Cliente Comercial (5 letras) *
               </label>
               <div class="flex gap-2">
                 <div class="relative flex-1">
                   <Input
-                    :model-value="selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.id})` : ''"
-                    placeholder="Seleccione un cliente..."
-                    readonly
-                    @click="showCustomerModal = true"
-                    class="cursor-pointer bg-slate-50 focus:bg-white"
+                    id="order-customer-id"
+                    placeholder="ALFKI"
+                    :max-length="5"
+                    class="font-mono uppercase tracking-wider"
+                    :model-value="selectedCustomerId"
+                    @update:model-value="handleCustomerIdInput"
+                    @blur="markTouched('customer')"
+                    @keydown="allowOnlyAlpha"
+                    @paste="handleCustomerIdPaste"
                   />
                 </div>
                 <Button
@@ -396,12 +470,16 @@ const onSubmit = async () => {
                   class="shrink-0"
                 >
                   <Users class="h-4 w-4 mr-1 text-sky-600" />
-                  <span>Buscar</span>
+                  <span>Buscar Cliente</span>
                 </Button>
               </div>
 
-              <p v-if="errors.customer" class="mt-1 text-xs text-red-600 font-medium">
-                {{ errors.customer }}
+              <!-- Mensaje de error de cliente reactivo -->
+              <p v-if="customerErrorMessage" class="mt-1 text-xs text-red-600 font-medium leading-relaxed">
+                {{ customerErrorMessage }}
+              </p>
+              <p v-else-if="selectedCustomer" class="mt-1 text-xs text-emerald-600 font-medium">
+                ✓ {{ selectedCustomer.name }}
               </p>
 
               <!-- Insignias informativas del cliente seleccionado -->
@@ -426,7 +504,7 @@ const onSubmit = async () => {
             <div>
               <Input
                 id="order-doc"
-                label="Cédula / RUC *"
+                label="Cédula / RUC (Ecuador) *"
                 placeholder="1790012345001"
                 :max-length="13"
                 :error="errors.customerDocument"
@@ -451,6 +529,7 @@ const onSubmit = async () => {
               <span>Dirección de Destino / Envío</span>
             </h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <!-- Dirección -->
               <div class="sm:col-span-2">
                 <Input
                   id="ship-address"
@@ -459,50 +538,70 @@ const onSubmit = async () => {
                   :max-length="60"
                   :error="errors.shipAddress"
                   :model-value="shipAddress"
-                  @update:model-value="shipAddress = sanitizeAddress($event).slice(0, 60)"
+                  @update:model-value="shipAddress = sanitizeAddress($event, 60)"
                   @blur="markTouched('shipAddress')"
                   @keydown="allowAddressChars"
+                  @paste="handleAddressPaste"
                 />
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                  {{ shipAddress.length }}/60
+                </span>
               </div>
 
+              <!-- Ciudad -->
               <div>
                 <Input
                   id="ship-city"
                   label="Ciudad *"
                   placeholder="Quito"
-                  :max-length="30"
+                  :max-length="15"
                   :error="errors.shipCity"
                   :model-value="shipCity"
-                  @update:model-value="shipCity = sanitizeLettersAndSpaces($event).slice(0, 30)"
+                  @update:model-value="shipCity = sanitizeLettersAndSpaces($event).slice(0, 15)"
                   @blur="markTouched('shipCity')"
                   @keydown="allowOnlyLettersAndSpaces"
+                  @paste="handleCityPaste"
                 />
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                  {{ shipCity.length }}/15
+                </span>
               </div>
 
+              <!-- País -->
               <div>
                 <Input
                   id="ship-country"
                   label="País *"
                   placeholder="Ecuador"
-                  :max-length="30"
+                  :max-length="15"
                   :error="errors.shipCountry"
                   :model-value="shipCountry"
-                  @update:model-value="shipCountry = sanitizeLettersAndSpaces($event).slice(0, 30)"
+                  @update:model-value="shipCountry = sanitizeLettersAndSpaces($event).slice(0, 15)"
                   @blur="markTouched('shipCountry')"
                   @keydown="allowOnlyLettersAndSpaces"
+                  @paste="handleCountryPaste"
                 />
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                  {{ shipCountry.length }}/15
+                </span>
               </div>
 
+              <!-- Código Postal -->
               <div class="sm:col-span-2 md:col-span-1">
                 <Input
                   id="ship-postal"
                   label="Código Postal"
                   placeholder="170150"
                   :max-length="10"
+                  class="uppercase font-mono"
                   :model-value="shipPostalCode"
-                  @update:model-value="shipPostalCode = sanitizeDigits($event).slice(0, 10)"
-                  @keydown="allowOnlyDigits"
+                  @update:model-value="shipPostalCode = sanitizeAlphanumeric($event).toUpperCase().slice(0, 10)"
+                  @keydown="allowAlphanumeric"
+                  @paste="handlePostalPaste"
                 />
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                  {{ shipPostalCode.length }}/10
+                </span>
               </div>
             </div>
           </div>
@@ -529,6 +628,17 @@ const onSubmit = async () => {
           </Button>
         </CardHeader>
         <CardContent class="p-0">
+          <!-- Banner dinámico para más de 3 productos -->
+          <div
+            v-if="cartItems.length > 3"
+            class="m-4 p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 flex items-start space-x-3 text-xs sm:text-sm animate-fade-in"
+          >
+            <Mail class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div class="leading-snug">
+              <span class="font-bold">⚠️ Orden Especial (> 3 productos) 👉 Se notificará vía Mailtrap al registrarse.</span>
+            </div>
+          </div>
+
           <div v-if="cartItems.length === 0" class="p-12 text-center text-slate-400 space-y-2">
             <ShoppingCart class="h-10 w-10 mx-auto text-slate-300" />
             <p class="font-medium text-sm text-slate-600">No hay productos agregados</p>
@@ -543,7 +653,7 @@ const onSubmit = async () => {
                 <TableHead class="w-16">ID</TableHead>
                 <TableHead>Producto</TableHead>
                 <TableHead class="text-right w-28">Precio Unit.</TableHead>
-                <TableHead class="text-center w-36">Cantidad</TableHead>
+                <TableHead class="text-center w-48">Cantidad</TableHead>
                 <TableHead class="text-right w-32">Subtotal</TableHead>
                 <TableHead class="text-center w-16">Quitar</TableHead>
               </TableRow>
@@ -554,36 +664,43 @@ const onSubmit = async () => {
                   #{{ item.productId }}
                 </TableCell>
                 <TableCell class="font-medium text-slate-900">
-                  {{ item.productName }}
+                  <div>{{ item.productName }}</div>
+                  <div class="text-[11px] text-slate-400">Stock disp.: {{ item.unitsInStock }}</div>
                 </TableCell>
                 <TableCell class="text-right font-mono text-xs">
                   ${{ Number(item.unitPrice).toFixed(2) }}
                 </TableCell>
                 <TableCell class="text-center">
-                  <div class="flex items-center justify-center space-x-1">
-                    <button
-                      type="button"
-                      @click="handleUpdateQuantity(item.productId, item.quantity - 1)"
-                      class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm"
+                  <div class="flex flex-col items-center">
+                    <div class="flex items-center justify-center space-x-1">
+                      <button
+                        type="button"
+                        @click="handleUpdateQuantity(item.productId, item.quantity - 1)"
+                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="text"
+                        :value="item.quantity"
+                        @input="handleManualQuantityInput(item.productId, ($event.target as HTMLInputElement).value)"
+                        @keydown="allowOnlyDigits"
+                        class="h-7 w-14 text-center font-mono text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      />
+                      <button
+                        type="button"
+                        @click="handleUpdateQuantity(item.productId, item.quantity + 1)"
+                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span
+                      v-if="item.quantity > item.unitsInStock"
+                      class="text-[11px] text-red-600 font-semibold mt-1"
                     >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min="1"
-                      :max="item.unitsInStock"
-                      :value="item.quantity"
-                      @change="(e) => handleUpdateQuantity(item.productId, parseInt((e.target as HTMLInputElement).value) || 1)"
-                      class="h-7 w-12 text-center font-mono text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    />
-                    <button
-                      type="button"
-                      @click="handleUpdateQuantity(item.productId, item.quantity + 1)"
-                      :disabled="item.quantity >= item.unitsInStock"
-                      class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm disabled:opacity-40"
-                    >
-                      +
-                    </button>
+                      Excede stock disponible
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell class="text-right font-mono font-semibold text-slate-900">
@@ -611,13 +728,13 @@ const onSubmit = async () => {
         <CardContent class="p-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div class="text-xs text-slate-500 space-y-1">
-              <p>Tarifa de impuesto calculada con IVA 15% (Ecuador vigente).</p>
-              <p>El cliente debe tener saldo comercial al día ($0.00) para emitir la orden.</p>
+              <p>• Tarifa de impuesto calculada con IVA 15% (Ecuador legal vigente).</p>
+              <p>• El cliente debe tener saldo comercial al día ($0.00) para emitir la orden.</p>
             </div>
 
             <div class="w-full sm:w-80 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
               <div class="flex justify-between text-xs text-slate-600">
-                <span>Subtotal:</span>
+                <span>Base Imponible:</span>
                 <span class="font-mono font-semibold">${{ Number(subTotal).toFixed(2) }} USD</span>
               </div>
               <div class="flex justify-between text-xs text-slate-600">
@@ -650,35 +767,29 @@ const onSubmit = async () => {
     <ProductSelectorModal
       :open="isCatalogOpen"
       @update:open="isCatalogOpen = $event"
-      :selected-product-ids="cartItems.map((i) => i.productId)"
+      :selected-product-ids="cartItems.map((item) => item.productId)"
       @select-product="handleAddProduct"
     />
 
-    <!-- Modal para Seleccionar Cliente Comercial -->
+    <!-- Modal para Seleccionar Cliente del Catálogo -->
     <CustomerSelectorModal
       :open="showCustomerModal"
       @update:open="showCustomerModal = $event"
-      @select-customer="handleSelectCustomer"
       :selected-customer-id="selectedCustomerId"
+      @select-customer="handleSelectCustomer"
     />
 
-    <!-- Modal de Confirmación para Quitar un Producto del Carrito -->
+    <!-- Diálogo de Confirmación para Quitar Producto del Carrito -->
     <Dialog
       :open="itemToDelete !== null"
-      @update:open="
-        (open) => {
-          if (!open) itemToDelete = null;
-        }
-      "
+      @update:open="(val) => { if (!val) itemToDelete = null; }"
       title="Confirmar Eliminación"
       description="Gestión de líneas de detalle de la orden"
     >
       <div class="space-y-4">
         <p class="text-sm text-slate-700">
           ¿Está seguro de que desea eliminar el producto
-          <strong class="text-slate-900">&quot;{{ itemToDelete?.productName }}&quot;</strong> (ID #{{
-            itemToDelete?.productId
-          }}) del pedido?
+          <strong class="text-slate-900">&quot;{{ itemToDelete?.productName }}&quot;</strong> (ID #{{ itemToDelete?.productId }}) del pedido?
         </p>
         <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
           <Button
@@ -690,7 +801,6 @@ const onSubmit = async () => {
           </Button>
           <Button
             type="button"
-            variant="destructive"
             @click="confirmRemoveItem"
             class="bg-red-600 hover:bg-red-700 text-white"
           >
@@ -701,7 +811,7 @@ const onSubmit = async () => {
       </div>
     </Dialog>
 
-    <!-- Modal de Confirmación para Limpiar Todo el Formulario -->
+    <!-- Diálogo de Confirmación para Limpiar Formulario -->
     <Dialog
       :open="showResetConfirm"
       @update:open="showResetConfirm = $event"
@@ -729,12 +839,9 @@ const onSubmit = async () => {
           </Button>
           <Button
             type="button"
-            variant="destructive"
             @click="
-              () => {
-                showResetConfirm = false;
-                handleResetForm();
-              }
+              showResetConfirm = false;
+              handleResetForm();
             "
             class="bg-red-600 hover:bg-red-700 text-white"
           >
@@ -745,7 +852,7 @@ const onSubmit = async () => {
       </div>
     </Dialog>
 
-    <!-- Modal de Comprobante / Factura Oficial (Patrón Snapshot) -->
+    <!-- Modal de Comprobante / Factura Emitida con Éxito -->
     <Dialog
       :open="voucherModalOpen"
       @update:open="voucherModalOpen = $event"
@@ -756,8 +863,8 @@ const onSubmit = async () => {
       <InvoiceVoucher
         v-if="issuedInvoice"
         :invoice="issuedInvoice"
-        @close="voucherModalOpen = false"
         :show-print-button="true"
+        @close="voucherModalOpen = false"
       />
     </Dialog>
   </div>

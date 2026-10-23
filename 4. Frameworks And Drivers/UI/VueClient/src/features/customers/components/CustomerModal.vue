@@ -6,8 +6,9 @@ import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import {
   allowOnlyAlpha,
   allowOnlyLettersAndSpaces,
-  sanitizeAlpha,
+  sanitizeAlphaUpper,
   sanitizeLettersAndSpaces,
+  handlePasteFilter,
 } from '@/core/utils/inputFilters';
 import type { CustomerDto } from '../types';
 import { customerSchema, type CustomerFormData } from '../schemas';
@@ -53,7 +54,7 @@ watch(
       errors.value = {};
       if (props.customerToEdit) {
         formData.value = {
-          id: props.customerToEdit.id,
+          id: props.customerToEdit.id.toUpperCase(),
           name: props.customerToEdit.name,
           currentBalance: props.customerToEdit.currentBalance,
           customerType: (props.customerToEdit.customerType as 'Persona Natural' | 'Empresa') || 'Empresa',
@@ -72,11 +73,19 @@ watch(
 );
 
 const handleIdInput = (val: string) => {
-  formData.value.id = sanitizeAlpha(val).slice(0, 5);
+  formData.value.id = sanitizeAlphaUpper(val, 5);
+};
+
+const handleIdPaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeAlphaUpper(text, 5));
 };
 
 const handleNameInput = (val: string) => {
   formData.value.name = sanitizeLettersAndSpaces(val).slice(0, 40);
+};
+
+const handleNamePaste = (e: ClipboardEvent) => {
+  handlePasteFilter(e, (text) => sanitizeLettersAndSpaces(text).slice(0, 40));
 };
 
 const onSubmit = async () => {
@@ -164,25 +173,35 @@ const onSubmit = async () => {
           :max-length="5"
           :error="errors.id"
           @keydown="allowOnlyAlpha"
+          @paste="handleIdPaste"
           class="font-mono uppercase tracking-wider"
           :model-value="formData.id"
           @update:model-value="handleIdInput"
         />
         <p v-if="isEditing" class="text-xs text-slate-400 mt-1">
-          El identificador no puede modificarse una vez creado.
+          El identificador no puede modificarse una vez creado (modo solo lectura).
+        </p>
+        <p v-else class="text-[11px] text-slate-500 mt-1">
+          Exactamente 5 letras en mayúsculas (A-Z).
         </p>
       </div>
 
-      <Input
-        id="customer-name"
-        label="Nombre o Razón Social *"
-        placeholder="Alfreds Futterkiste"
-        :max-length="40"
-        :error="errors.name"
-        @keydown="allowOnlyLettersAndSpaces"
-        :model-value="formData.name"
-        @update:model-value="handleNameInput"
-      />
+      <div>
+        <Input
+          id="customer-name"
+          label="Nombre o Razón Social *"
+          placeholder="Alfreds Futterkiste"
+          :max-length="40"
+          :error="errors.name"
+          @keydown="allowOnlyLettersAndSpaces"
+          @paste="handleNamePaste"
+          :model-value="formData.name"
+          @update:model-value="handleNameInput"
+        />
+        <p class="text-[11px] text-slate-500 mt-1">
+          Solo letras y espacios en español (máx. 40 caracteres).
+        </p>
+      </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input

@@ -14,6 +14,7 @@
 
 import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../auth/useAuthStore';
+import { getApiBaseUrl, registerApiClient } from '../config/apiConfig';
 
 export interface ValidationErrorItem {
   propertyName?: string;
@@ -155,13 +156,16 @@ export function getErrorMessage(error: unknown, defaultMessage = 'Ha ocurrido un
   return defaultMessage;
 }
 
-// Instancia configurada de Axios
+// Instancia configurada de Axios con baseURL dinámica
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Registrar para sincronización en caliente desde Settings
+registerApiClient(apiClient);
 
 // Interceptor de Solicitud: Inyecta el token Bearer desde localStorage
 apiClient.interceptors.request.use(

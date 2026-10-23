@@ -90,6 +90,18 @@ export const registerSchema = z
       .refine(
         (val) => !/\s/.test(val) && HAS_NO_EMOJI(val),
         'La contraseña no debe contener emojis ni espacios en blanco.'
+      )
+      .refine(
+        (val) => /[A-Z]/.test(val),
+        'La contraseña debe contener al menos una letra mayúscula.'
+      )
+      .refine(
+        (val) => /[0-9]/.test(val),
+        'La contraseña debe contener al menos un dígito.'
+      )
+      .refine(
+        (val) => /[^a-zA-Z0-9\s]/.test(val),
+        'La contraseña debe contener al menos un símbolo especial.'
       ),
     confirmPassword: z
       .string()

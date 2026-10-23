@@ -16,10 +16,11 @@ import {
   PanelLeftOpen,
   Sun,
   Moon,
+  Settings,
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/core/auth/useAuthStore';
 import { useTheme } from '@/shared/composables/useTheme';
-import { Button, Dialog } from '@/shared/ui';
+import { Button, Dialog, Badge } from '@/shared/ui';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -48,6 +49,7 @@ const navItems = [
   { label: 'Facturas', path: '/invoices', icon: Receipt },
   { label: 'Clientes', path: '/customers', icon: Users },
   { label: 'Productos', path: '/products', icon: Package },
+  { label: 'Configuración', path: '/settings', icon: Settings },
 ];
 
 const isActive = (path: string) => {
@@ -110,15 +112,20 @@ const isActive = (path: string) => {
               <Moon v-else class="h-5 w-5 text-slate-600 hover:text-slate-900" />
             </button>
 
-            <!-- Perfil de Usuario -->
+            <!-- Perfil de Usuario con Badge de Rol -->
             <div class="hidden sm:flex items-center space-x-2 text-right">
               <div class="h-8 w-8 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-semibold text-xs border border-sky-200">
                 <UserIcon class="h-4 w-4" />
               </div>
               <div class="flex flex-col text-left">
-                <span class="text-sm font-medium text-slate-800 leading-tight">
-                  {{ authStore.user?.name || 'Usuario' }}
-                </span>
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-sm font-medium text-slate-800 leading-tight">
+                    {{ authStore.user?.name || 'Usuario' }}
+                  </span>
+                  <Badge variant="info" class="text-[10px] py-0 px-1.5 font-normal">
+                    {{ authStore.user?.role || 'Vendedor' }}
+                  </Badge>
+                </div>
                 <span
                   class="text-xs text-slate-500 leading-tight truncate max-w-[280px]"
                   :title="authStore.user?.email || 'usuario@northwind.com'"

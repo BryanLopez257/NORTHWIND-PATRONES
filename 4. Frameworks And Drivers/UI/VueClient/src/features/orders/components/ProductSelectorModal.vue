@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2 } from 'lucide-vue-next';
+import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2, ArrowLeftRight } from 'lucide-vue-next';
 import { useProducts } from '@/features/products/composables/useProducts';
 import type { ProductDto } from '@/features/products/types';
 import {
@@ -20,11 +20,17 @@ import {
 interface Props {
   open: boolean;
   selectedProductIds: number[];
+  title?: string;
+  description?: string;
+  actionLabel?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   open: false,
   selectedProductIds: () => [],
+  title: 'Catálogo de Productos para la Orden',
+  description: 'Seleccione los productos disponibles en inventario para agregar al carrito de compra.',
+  actionLabel: 'Agregar',
 });
 
 const emit = defineEmits<{
@@ -39,17 +45,11 @@ const onlyInStock = ref(true);
 const { data: products, isLoading, error } = useProducts();
 const productList = computed(() => products.value ?? []);
 
-
 const currentPage = ref(1);
 const pageSize = 5;
 
 watch([searchTerm, searchCriteria, onlyInStock], () => {
   currentPage.value = 1;
-});
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return filteredProducts.value.slice(start, start + pageSize);
 });
 
 const filteredProducts = computed(() => {
@@ -73,6 +73,11 @@ const filteredProducts = computed(() => {
   });
 });
 
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredProducts.value.slice(start, start + pageSize);
+});
+
 const handleSelect = (product: ProductDto) => {
   if (product.unitsInStock <= 0 || props.selectedProductIds.includes(product.id)) {
     return;
@@ -91,8 +96,8 @@ const getPlaceholder = () => {
   <Dialog
     :open="open"
     @update:open="emit('update:open', $event)"
-    title="Catálogo de Productos para la Orden"
-    description="Seleccione los productos disponibles en inventario para agregar al carrito de compra."
+    :title="title"
+    :description="description"
     class="max-w-4xl"
   >
     <div class="space-y-4 pt-1">
@@ -210,8 +215,9 @@ const getPlaceholder = () => {
                   @click="handleSelect(product)"
                   class="h-8 px-2.5 text-xs flex items-center space-x-1 ml-auto"
                 >
-                  <Plus class="h-3.5 w-3.5" />
-                  <span>Agregar</span>
+                  <Plus v-if="actionLabel === 'Agregar'" class="h-3.5 w-3.5" />
+                  <ArrowLeftRight v-else class="h-3.5 w-3.5" />
+                  <span>{{ actionLabel }}</span>
                 </Button>
               </TableCell>
             </TableRow>

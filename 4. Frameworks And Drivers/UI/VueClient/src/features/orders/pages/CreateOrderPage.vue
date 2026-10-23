@@ -9,6 +9,7 @@
  * 2. Contadores en vivo para Dirección (X/60), Ciudad (X/15), País (X/15) y Código Postal (X/10).
  * 3. Líneas de productos con botones +/- y entrada manual por teclado.
  *    Alerta reactiva "Excede stock disponible" y bloqueo de envío.
+ *    Botón para CAMBIAR DE PRODUCTO en cada línea del pedido.
  * 4. Banner reactivo para órdenes especiales (> 3 productos) con notificación Mailtrap.
  * 5. Resumen económico (Base Imponible, IVA 15%, Total) y emisión de factura inmediata.
  */
@@ -26,6 +27,7 @@ import {
   MapPin,
   RefreshCw,
   Users,
+  ArrowLeftRight,
 } from 'lucide-vue-next';
 import { useCustomers } from '@/features/customers/composables/useCustomers';
 import type { CustomerDto } from '@/features/customers/types';
@@ -91,6 +93,7 @@ const markTouched = (field: string) => {
 // 4. Estado del Carrito de Compras
 const cartItems = ref<CartItem[]>([]);
 const isCatalogOpen = ref<boolean>(false);
+const itemToReplace = ref<CartItem | null>(null);
 const itemToDelete = ref<CartItem | null>(null);
 const showResetConfirm = ref<boolean>(false);
 
@@ -304,6 +307,44 @@ const handleAddProduct = (product: ProductDto) => {
   }
 };
 
+const handleStartReplaceProduct = (item: CartItem) => {
+  itemToReplace.value = item;
+  isCatalogOpen.value = true;
+};
+
+const modalSelectedProductIds = computed(() => {
+  if (itemToReplace.value) {
+    return cartItems.value
+      .filter((i) => i.productId !== itemToReplace.value?.productId)
+      .map((i) => i.productId);
+  }
+  return cartItems.value.map((i) => i.productId);
+});
+
+const handleSelectProductFromModal = (product: ProductDto) => {
+  if (itemToReplace.value) {
+    const index = cartItems.value.findIndex(
+      (i) => i.productId === itemToReplace.value?.productId
+    );
+    if (index !== -1) {
+      const prevQty = itemToReplace.value.quantity;
+      const newQty = Math.max(1, Math.min(prevQty, product.unitsInStock));
+      cartItems.value[index] = {
+        productId: product.id,
+        productName: product.name,
+        unitPrice: product.unitPrice,
+        unitsInStock: product.unitsInStock,
+        quantity: newQty,
+        subTotal: newQty * product.unitPrice,
+      };
+    }
+    itemToReplace.value = null;
+    isCatalogOpen.value = false;
+  } else {
+    handleAddProduct(product);
+  }
+};
+
 const handleUpdateQuantity = (productId: number, newQty: number) => {
   const item = cartItems.value.find((i) => i.productId === productId);
   if (!item) return;
@@ -344,6 +385,7 @@ const handleResetForm = () => {
   shipCountry.value = '';
   shipPostalCode.value = '';
   cartItems.value = [];
+  itemToReplace.value = null;
   touched.value = {};
   formError.value = null;
 };
@@ -620,7 +662,10 @@ const onSubmit = async () => {
           <Button
             type="button"
             size="sm"
-            @click="isCatalogOpen = true"
+            @click="
+              itemToReplace = null;
+              isCatalogOpen = true;
+            "
             class="bg-sky-600 hover:bg-sky-700 text-white"
           >
             <Plus class="h-4 w-4 mr-1.5" />
@@ -655,7 +700,7 @@ const onSubmit = async () => {
                 <TableHead class="text-right w-28">Precio Unit.</TableHead>
                 <TableHead class="text-center w-48">Cantidad</TableHead>
                 <TableHead class="text-right w-32">Subtotal</TableHead>
-                <TableHead class="text-center w-16">Quitar</TableHead>
+                <TableHead class="text-center w-36">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -707,15 +752,32 @@ const onSubmit = async () => {
                   ${{ Number(item.subTotal).toFixed(2) }}
                 </TableCell>
                 <TableCell class="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    @click="itemToDelete = item"
-                    class="h-8 w-8 text-slate-400 hover:text-red-600"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </Button>
+                  <div class="flex items-center justify-center space-x-1.5">
+                    <!-- Botón para Cambiar de Producto -->
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      @click="handleStartReplaceProduct(item)"
+                      title="Cambiar por otro producto del catálogo"
+                      class="h-8 px-2 text-xs text-sky-600 hover:text-sky-700 hover:bg-sky-50 border-sky-200 flex items-center space-x-1"
+                    >
+                      <ArrowLeftRight class="h-3.5 w-3.5" />
+                      <span>Cambiar</span>
+                    </Button>
+
+                    <!-- Botón para Quitar Producto -->
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      @click="itemToDelete = item"
+                      title="Quitar producto"
+                      class="h-8 w-8 text-slate-400 hover:text-red-600"
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -763,12 +825,28 @@ const onSubmit = async () => {
       </Card>
     </form>
 
-    <!-- Modal para Seleccionar Producto del Catálogo -->
+    <!-- Modal para Seleccionar / Cambiar Producto del Catálogo -->
     <ProductSelectorModal
       :open="isCatalogOpen"
-      @update:open="isCatalogOpen = $event"
-      :selected-product-ids="cartItems.map((item) => item.productId)"
-      @select-product="handleAddProduct"
+      @update:open="
+        (val) => {
+          isCatalogOpen = val;
+          if (!val) itemToReplace = null;
+        }
+      "
+      :selected-product-ids="modalSelectedProductIds"
+      :title="
+        itemToReplace
+          ? `Cambiar Producto #${itemToReplace.productId}: ${itemToReplace.productName}`
+          : 'Catálogo de Productos para la Orden'
+      "
+      :description="
+        itemToReplace
+          ? 'Seleccione en el catálogo el nuevo producto con el que desea sustituir esta línea del pedido.'
+          : 'Seleccione los productos disponibles en inventario para agregar al carrito de compra.'
+      "
+      :action-label="itemToReplace ? 'Cambiar por este' : 'Agregar'"
+      @select-product="handleSelectProductFromModal"
     />
 
     <!-- Modal para Seleccionar Cliente del Catálogo -->

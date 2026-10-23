@@ -1,4 +1,4 @@
-﻿namespace NorthWind.Sales.Backend.Repositories.Repositories;
+namespace NorthWind.Sales.Backend.Repositories.Repositories;
 
 internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQueriesRepository
 {
@@ -97,26 +97,24 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                 var term = filter.SearchTerm.Trim();
                 var criteria = filter.Criteria?.ToLowerInvariant();
 
+                // Enfoque híbrido:
+                // - Identificadores estructurados (Id, Identification) => StartsWith (LIKE 'x%', SARGable / Index Seek).
+                // - Nombres descriptivos (BusinessName, TradeName, Name) => Contains (LIKE '%x%'), permite palabras intermedias.
                 query = criteria switch
                 {
                     "identification" => query.Where(c => c.Identification.StartsWith(term)),
-                    "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.StartsWith(term)),
-                    "tradename" => query.Where(c => c.CustomerType == CustomerType.Legal && c.TradeName != null && c.TradeName.StartsWith(term)),
+                    "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.Contains(term)),
+                    "tradename" => query.Where(c => c.CustomerType == CustomerType.Legal && c.TradeName != null && c.TradeName.Contains(term)),
                     "lastname" => query.Where(c => c.CustomerType == CustomerType.Natural && c.LastName != null && c.LastName.StartsWith(term)),
-                    "name" => query.Where(c =>
-                        c.CustomerType == CustomerType.Natural && (
-                            (c.LastName != null && c.LastName.StartsWith(term)) ||
-                            (c.SecondLastName != null && c.SecondLastName.StartsWith(term)) ||
-                            (c.FirstName != null && c.FirstName.StartsWith(term)) ||
-                            (c.SecondName != null && c.SecondName.StartsWith(term)))),
+                    // Name es la columna calculada persistida "Apellidos Nombres", permite buscar nombres compuestos ("Trujillo Pérez").
+                    "name" => query.Where(c => c.CustomerType == CustomerType.Natural && c.Name.Contains(term)),
                     "id" => query.Where(c => c.Id.StartsWith(term)),
                     _ => query.Where(c =>
                         c.Id.StartsWith(term) ||
                         c.Identification.StartsWith(term) ||
-                        (c.BusinessName != null && c.BusinessName.StartsWith(term)) ||
-                        (c.TradeName != null && c.TradeName.StartsWith(term)) ||
-                        (c.LastName != null && c.LastName.StartsWith(term)) ||
-                        (c.FirstName != null && c.FirstName.StartsWith(term)))
+                        c.Name.Contains(term) ||
+                        (c.BusinessName != null && c.BusinessName.Contains(term)) ||
+                        (c.TradeName != null && c.TradeName.Contains(term)))
                 };
             }
 
@@ -261,16 +259,36 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
 
         if (filter != null)
         {
+            // Búsqueda global ('all'): códigos con StartsWith, nombre del cliente con Contains.
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                var term = filter.SearchTerm.Trim();
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(i =>
+                    i.InvoiceNumber.StartsWith(term) ||
+                    (hasNumericId && i.Id == numericId) ||
+                    i.CustomerId.StartsWith(term) ||
+                    (i.CustomerDocumentSnapshot != null && i.CustomerDocumentSnapshot.StartsWith(term)) ||
+                    (i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term)));
+            }
+
             if (!string.IsNullOrWhiteSpace(filter.InvoiceNumber))
             {
                 var term = filter.InvoiceNumber.Trim();
-                query = query.Where(i => i.InvoiceNumber.Contains(term));
+                // N° de factura: StartsWith => LIKE @term + '%' (Index Seek sobre IX_Invoices_InvoiceNumber).
+                // Si se ingresa sólo el correlativo numérico (ej. "23"), se resuelve por Id (PK) en lugar de LIKE '%x%'.
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(i => i.InvoiceNumber.StartsWith(term) || (hasNumericId && i.Id == numericId));
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerName))
             {
                 var term = filter.CustomerName.Trim();
-                query = query.Where(i => i.CustomerFullNameSnapshot.Contains(term) || i.CustomerId.Contains(term));
+                // Cliente: CustomerId / documento por prefijo (identificadores), nombre por contención (lenguaje natural).
+                query = query.Where(i =>
+                    i.CustomerId.StartsWith(term) ||
+                    (i.CustomerDocumentSnapshot != null && i.CustomerDocumentSnapshot.StartsWith(term)) ||
+                    (i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term)));
             }
         }
 

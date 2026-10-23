@@ -26,6 +26,8 @@ export interface InvoiceResponseDto {
 }
 
 export interface InvoiceFilters {
+  /** Búsqueda global (criterio 'all'), resuelta en el backend. */
+  searchTerm?: string;
   invoiceNumber?: string;
   customerName?: string;
 }

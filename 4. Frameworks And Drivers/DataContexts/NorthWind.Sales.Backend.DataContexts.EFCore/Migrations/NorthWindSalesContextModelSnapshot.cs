@@ -337,6 +337,9 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .HasDatabaseName("IX_Products_Name");
+
                     b.ToTable("Products");
 
                     b.HasData(

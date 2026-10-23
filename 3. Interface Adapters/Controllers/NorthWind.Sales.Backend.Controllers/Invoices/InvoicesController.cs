@@ -18,6 +18,7 @@ public static class InvoicesController
     }
 
     private static async Task<IResult> GetInvoices(
+        string? searchTerm,
         string? invoiceNumber,
         string? customerName,
         IGetInvoicesInputPort inputPort,
@@ -25,6 +26,7 @@ public static class InvoicesController
     {
         var filter = new InvoiceFilterDto
         {
+            SearchTerm = searchTerm,
             InvoiceNumber = invoiceNumber,
             CustomerName = customerName
         };

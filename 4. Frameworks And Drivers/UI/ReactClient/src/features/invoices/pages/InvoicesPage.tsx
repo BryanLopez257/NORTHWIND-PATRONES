@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { useInvoices } from '../hooks/useInvoices';
-import { InvoiceResponseDto } from '../types';
+import { InvoiceFilters, InvoiceResponseDto } from '../types';
 import { InvoiceVoucher } from '../components/InvoiceVoucher';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/ui/Card';
@@ -30,8 +30,9 @@ export const InvoicesPage: React.FC = () => {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 350);
 
-  // Mapeo dinámico de filtros al servicio backend según el criterio seleccionado
-  const serverFilters = useMemo(() => {
+  // Mapeo de filtros al backend según el criterio seleccionado.
+  // El filtrado se ejecuta íntegramente en SQL Server (sin filtrado secundario en cliente).
+  const serverFilters = useMemo<InvoiceFilters>(() => {
     const clean = debouncedSearchTerm.trim();
     if (!clean) return {};
     if (searchCriteria === 'invoiceNumber') {
@@ -40,7 +41,8 @@ export const InvoicesPage: React.FC = () => {
     if (searchCriteria === 'customer') {
       return { customerName: clean };
     }
-    return {};
+    // 'all': búsqueda global delegada al backend
+    return { searchTerm: clean };
   }, [debouncedSearchTerm, searchCriteria]);
 
   const {
@@ -50,35 +52,6 @@ export const InvoicesPage: React.FC = () => {
     error,
     refetch,
   } = useInvoices(serverFilters);
-
-  // Filtrado reactivo en el cliente para soporte exhaustivo y fluido
-  const filteredInvoices = useMemo(() => {
-    if (!searchTerm.trim()) return invoices;
-    const term = searchTerm.trim().toLowerCase();
-
-    return invoices.filter((inv) => {
-      const invNum = (inv.invoiceNumber || `FAC-${inv.id}`).toLowerCase();
-      const invId = String(inv.id);
-      const custName = (inv.customerFullName || '').toLowerCase();
-      const custId = (inv.customerId || '').toLowerCase();
-      const doc = (inv.customerDocument || '').toLowerCase();
-
-      if (searchCriteria === 'invoiceNumber') {
-        return invNum.includes(term) || invId.includes(term);
-      }
-      if (searchCriteria === 'customer') {
-        return custName.includes(term) || custId.includes(term) || doc.includes(term);
-      }
-      // 'all' busca por cualquiera de los campos
-      return (
-        invNum.includes(term) ||
-        invId.includes(term) ||
-        custName.includes(term) ||
-        custId.includes(term) ||
-        doc.includes(term)
-      );
-    });
-  }, [invoices, searchTerm, searchCriteria]);
 
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
@@ -218,7 +191,7 @@ export const InvoicesPage: React.FC = () => {
         <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-900 flex items-center space-x-2">
             <FileText className="h-5 w-5 text-blue-600" />
-            <span>Comprobantes Emitidos ({filteredInvoices.length})</span>
+            <span>Comprobantes Emitidos ({invoices.length})</span>
           </CardTitle>
           {isFetching && (
             <span className="text-xs text-slate-400 font-medium animate-pulse">
@@ -232,7 +205,7 @@ export const InvoicesPage: React.FC = () => {
               <RefreshCw className="h-8 w-8 mx-auto text-slate-400 animate-spin" />
               <p>Cargando facturas...</p>
             </div>
-          ) : filteredInvoices.length === 0 ? (
+          ) : invoices.length === 0 ? (
             <div className="p-12 text-center text-slate-400 space-y-3">
               <Receipt className="h-10 w-10 mx-auto text-slate-300" />
               <p className="font-medium text-slate-600">No se encontraron facturas registradas</p>
@@ -265,7 +238,7 @@ export const InvoicesPage: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInvoices.map((inv) => (
+                  {invoices.map((inv) => (
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-xs font-bold text-blue-700">
                         {inv.invoiceNumber || `FAC-${inv.id}`}

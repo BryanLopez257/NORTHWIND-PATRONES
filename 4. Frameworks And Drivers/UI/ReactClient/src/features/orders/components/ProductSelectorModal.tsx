@@ -43,13 +43,14 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
       // Filtro de texto por criterio
       if (searchTerm.trim()) {
         const term = searchTerm.trim().toLowerCase();
+        // ID: prefijo (evita que "1" coincida con 21, 31, 41...); nombre: contención
         if (searchCriteria === 'id') {
-          return p.id.toString().includes(term);
+          return p.id.toString().startsWith(term);
         }
         if (searchCriteria === 'name') {
           return p.name.toLowerCase().includes(term);
         }
-        return p.name.toLowerCase().includes(term) || p.id.toString().includes(term);
+        return p.name.toLowerCase().includes(term) || p.id.toString().startsWith(term);
       }
 
       return true;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User, X } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto } from '@/features/customers/types';
@@ -81,10 +81,11 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
           );
         case 'lastname':
           return (c.lastName || '').toLowerCase().startsWith(term);
+        // Nombres descriptivos: contención (palabras intermedias), alineado con el backend
         case 'businessname':
-          return (c.businessName || '').toLowerCase().startsWith(term);
+          return (c.businessName || '').toLowerCase().includes(term);
         case 'tradename':
-          return (c.tradeName || '').toLowerCase().startsWith(term);
+          return (c.tradeName || '').toLowerCase().includes(term);
         case 'all':
         default:
           return (

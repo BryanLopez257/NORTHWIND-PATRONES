@@ -5,6 +5,9 @@ import { InvoiceFilters, InvoiceResponseDto } from './types';
 export const invoicesService = {
   async getInvoices(filters?: InvoiceFilters): Promise<InvoiceResponseDto[]> {
     const params: Record<string, string> = {};
+    if (filters?.searchTerm?.trim()) {
+      params.searchTerm = filters.searchTerm.trim();
+    }
     if (filters?.invoiceNumber?.trim()) {
       params.invoiceNumber = filters.invoiceNumber.trim();
     }

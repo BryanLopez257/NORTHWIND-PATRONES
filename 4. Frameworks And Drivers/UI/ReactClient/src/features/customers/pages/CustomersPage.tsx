@@ -225,6 +225,7 @@ export const CustomersPage: React.FC = () => {
               >
                 <optgroup label="Búsqueda General">
                   <option value="all">🔍 Todos los campos</option>
+                  <option value="tradename">🏪 Nombre Comercial</option>
                   <option value="identification">🪪 Cédula / RUC</option>
                   <option value="id">🏷️ Código ID</option>
                 </optgroup>
@@ -234,7 +235,6 @@ export const CustomersPage: React.FC = () => {
                 </optgroup>
                 <optgroup label="Empresas / Jurídicas">
                   <option value="businessname">🏢 Razón Social</option>
-                  <option value="tradename">🏪 Nombre Comercial</option>
                 </optgroup>
               </select>
             </div>

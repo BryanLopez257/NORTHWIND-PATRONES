@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff, Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Dialog } from '@/shared/ui/Dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
 import {
   allowOnlyLettersAndSpaces,
@@ -26,6 +27,7 @@ export const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
 
   const {
     register,
@@ -33,7 +35,7 @@ export const RegisterPage: React.FC = () => {
     setValue,
     setError,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<RegisterFormData>({
     mode: 'onTouched',
     resolver: zodResolver(registerSchema),
@@ -48,8 +50,28 @@ export const RegisterPage: React.FC = () => {
     },
   });
 
-  const passwordValue = watch('password') || '';
-  const confirmPasswordValue = watch('confirmPassword') || '';
+  const formValues = watch();
+  const passwordValue = formValues.password || '';
+
+  // Determina si los campos están dirty o con datos ingresados (llenos)
+  const isFormDirtyOrFilled =
+    isDirty ||
+    Boolean(formValues.firstName?.trim()) ||
+    Boolean(formValues.secondName?.trim()) ||
+    Boolean(formValues.lastName?.trim()) ||
+    Boolean(formValues.secondLastName?.trim()) ||
+    Boolean(formValues.email?.trim()) ||
+    Boolean(formValues.password) ||
+    Boolean(formValues.confirmPassword);
+
+  const handleGoToLogin = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isFormDirtyOrFilled) {
+      setShowLeaveConfirmModal(true);
+    } else {
+      navigate('/login');
+    }
+  };
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
@@ -149,7 +171,7 @@ export const RegisterPage: React.FC = () => {
                     onChange: (e) => {
                       const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
-                      setValue('firstName', clean, { shouldValidate: true });
+                      setValue('firstName', clean, { shouldValidate: true, shouldDirty: true });
                     },
                   })}
                 />
@@ -169,7 +191,7 @@ export const RegisterPage: React.FC = () => {
                     onChange: (e) => {
                       const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
-                      setValue('secondName', clean, { shouldValidate: true });
+                      setValue('secondName', clean, { shouldValidate: true, shouldDirty: true });
                     },
                   })}
                 />
@@ -192,7 +214,7 @@ export const RegisterPage: React.FC = () => {
                     onChange: (e) => {
                       const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
-                      setValue('lastName', clean, { shouldValidate: true });
+                      setValue('lastName', clean, { shouldValidate: true, shouldDirty: true });
                     },
                   })}
                 />
@@ -212,7 +234,7 @@ export const RegisterPage: React.FC = () => {
                     onChange: (e) => {
                       const clean = sanitizeLettersAndSpaces(e.target.value).slice(0, 30);
                       e.target.value = clean;
-                      setValue('secondLastName', clean, { shouldValidate: true });
+                      setValue('secondLastName', clean, { shouldValidate: true, shouldDirty: true });
                     },
                   })}
                 />
@@ -235,7 +257,7 @@ export const RegisterPage: React.FC = () => {
                   onChange: (e) => {
                     const clean = sanitizeEmailChars(e.target.value).slice(0, 254);
                     e.target.value = clean;
-                    setValue('email', clean, { shouldValidate: true });
+                    setValue('email', clean, { shouldValidate: true, shouldDirty: true });
                   },
                 })}
               />
@@ -243,80 +265,65 @@ export const RegisterPage: React.FC = () => {
             </div>
 
             {/* Contraseñas */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Input
-                    id="reg-password"
-                    label="Contraseña *"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Mínimo 6 caracteres"
-                    maxLength={100}
-                    autoComplete="new-password"
-                    error={errors.password?.message}
-                    onKeyDown={(e) => {
-                      blockWhitespace(e);
-                      blockEmojis(e);
-                    }}
-                    rightElement={
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="focus:outline-none"
-                        aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    }
-                    {...register('password')}
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    id="reg-confirm-password"
-                    label="Confirmar contraseña *"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Repite la contraseña"
-                    maxLength={100}
-                    autoComplete="new-password"
-                    error={errors.confirmPassword?.message}
-                    onKeyDown={(e) => {
-                      blockWhitespace(e);
-                      blockEmojis(e);
-                    }}
-                    rightElement={
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="focus:outline-none"
-                        aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    }
-                    {...register('confirmPassword')}
-                  />
-                  {confirmPasswordValue.length > 0 && (
-                    <div className="mt-1.5 text-[11px] font-medium flex items-center gap-1">
-                      {passwordValue && passwordValue === confirmPasswordValue ? (
-                        <span className="text-emerald-600 flex items-center gap-1">
-                          <Check className="h-3.5 w-3.5" /> Las contraseñas coinciden
-                        </span>
-                      ) : (
-                        <span className="text-amber-600 flex items-center gap-1">
-                          <X className="h-3.5 w-3.5 text-amber-600" /> Las contraseñas no coinciden
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Input
+                  id="reg-password"
+                  label="Contraseña *"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  maxLength={100}
+                  autoComplete="new-password"
+                  error={errors.password?.message}
+                  onKeyDown={(e) => {
+                    blockWhitespace(e);
+                    blockEmojis(e);
+                  }}
+                  rightElement={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="focus:outline-none"
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                  {...register('password')}
+                />
+                {passwordValue.length > 0 && (
+                  <PasswordStrengthIndicator password={passwordValue} className="mt-2" />
+                )}
               </div>
 
-              {/* Medidor de fortaleza y validaciones faltantes en tiempo real */}
-              <PasswordStrengthIndicator password={passwordValue} />
+              <div>
+                <Input
+                  id="reg-confirm-password"
+                  label="Confirmar contraseña *"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Repite la contraseña"
+                  maxLength={100}
+                  autoComplete="new-password"
+                  error={errors.confirmPassword?.message}
+                  onKeyDown={(e) => {
+                    blockWhitespace(e);
+                    blockEmojis(e);
+                  }}
+                  rightElement={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="focus:outline-none"
+                      aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                  {...register('confirmPassword')}
+                />
+              </div>
             </div>
 
             <Button
@@ -331,12 +338,44 @@ export const RegisterPage: React.FC = () => {
 
           <div className="mt-6 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
             ¿Ya tienes una cuenta?{' '}
-            <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline ml-1">
+            <button
+              type="button"
+              onClick={handleGoToLogin}
+              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline ml-1 cursor-pointer focus:outline-none"
+            >
               Iniciar sesión
-            </Link>
+            </button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de confirmación si los campos están dirty/llenos */}
+      <Dialog
+        open={showLeaveConfirmModal}
+        onOpenChange={setShowLeaveConfirmModal}
+        title="¿Desea salir del registro?"
+        description="Tiene datos ingresados en el formulario. Si va a iniciar sesión ahora, se perderán todos los datos completados. ¿Desea continuar?"
+      >
+        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowLeaveConfirmModal(false)}
+          >
+            Permanecer aquí
+          </Button>
+          <Button
+            type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => {
+              setShowLeaveConfirmModal(false);
+              navigate('/login');
+            }}
+          >
+            Sí, ir a Iniciar sesión
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 };

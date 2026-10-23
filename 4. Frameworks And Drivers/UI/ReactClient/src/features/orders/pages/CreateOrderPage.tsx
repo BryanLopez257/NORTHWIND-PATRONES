@@ -309,13 +309,13 @@ export const CreateOrderPage: React.FC = () => {
       const alreadyInCart = cartItems.find((i) => i.productId === newProductId);
 
       if (alreadyInCart) {
-        // Remueve el producto anterior y simplemente aumenta en 1 la cantidad del existente
+        // Remueve el producto anterior y simplemente aumenta en 1 la cantidad del existente (sin exceder stock)
         setCartItems((prev) =>
           prev
             .filter((i) => i.productId !== targetId)
             .map((i) => {
               if (i.productId === newProductId) {
-                const newQty = i.quantity + 1;
+                const newQty = Math.min(i.quantity + 1, i.unitsInStock);
                 return {
                   ...i,
                   quantity: newQty,
@@ -354,8 +354,15 @@ export const CreateOrderPage: React.FC = () => {
   };
 
   const handleUpdateQuantity = (productId: number, newQtyNumber: number) => {
+    const current = cartItems.find((i) => i.productId === productId);
+    if (!current) return;
+
     let qty = isNaN(newQtyNumber) ? 1 : newQtyNumber;
     if (qty < 1) qty = 1;
+    // Bloquear para que no pueda exceder el stock disponible
+    if (current.unitsInStock > 0 && qty > current.unitsInStock) {
+      qty = current.unitsInStock;
+    }
 
     setCartItems((prev) =>
       prev.map((item) => {
@@ -374,6 +381,8 @@ export const CreateOrderPage: React.FC = () => {
   const handleIncrementQuantity = (productId: number) => {
     const current = cartItems.find((i) => i.productId === productId);
     if (!current) return;
+    // No permitir incrementar si ya alcanzó o superó el stock
+    if (current.quantity >= current.unitsInStock) return;
     handleUpdateQuantity(productId, current.quantity + 1);
   };
 
@@ -984,7 +993,7 @@ export const CreateOrderPage: React.FC = () => {
                                 type="button"
                                 onClick={() => handleDecrementQuantity(item.productId)}
                                 disabled={item.quantity <= 1}
-                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 transition-colors"
+                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 aria-label="Disminuir cantidad"
                               >
                                 <Minus className="h-3.5 w-3.5" />
@@ -992,7 +1001,16 @@ export const CreateOrderPage: React.FC = () => {
                               <input
                                 type="number"
                                 min="1"
+                                max={item.unitsInStock}
                                 value={item.quantity}
+                                onKeyDown={(e) => {
+                                  if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                  if (e.key === 'ArrowUp' && item.quantity >= item.unitsInStock) {
+                                    e.preventDefault();
+                                  }
+                                }}
                                 onChange={(e) =>
                                   handleUpdateQuantity(item.productId, parseInt(e.target.value, 10))
                                 }
@@ -1001,12 +1019,23 @@ export const CreateOrderPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleIncrementQuantity(item.productId)}
-                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
+                                disabled={item.quantity >= item.unitsInStock}
+                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 aria-label="Aumentar cantidad"
+                                title={
+                                  item.quantity >= item.unitsInStock
+                                    ? `Stock máximo disponible alcanzado (${item.unitsInStock})`
+                                    : 'Aumentar cantidad'
+                                }
                               >
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
                             </div>
+                            {item.quantity >= item.unitsInStock && item.unitsInStock > 0 && (
+                              <p className="text-[10px] text-amber-700 font-medium mt-1">
+                                Stock máx. ({item.unitsInStock} uds.)
+                              </p>
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-slate-900">
                             ${Number(item.subTotal).toFixed(2)}

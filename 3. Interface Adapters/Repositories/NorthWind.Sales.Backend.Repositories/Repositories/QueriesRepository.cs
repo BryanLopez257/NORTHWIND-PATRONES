@@ -114,7 +114,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                 {
                     "identification" => query.Where(c => c.Identification.StartsWith(term)),
                     "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.Contains(term)),
-                    "tradename" => query.Where(c => c.CustomerType == CustomerType.Legal && c.TradeName != null && c.TradeName.Contains(term)),
+                    "tradename" => query.Where(c => c.TradeName != null && c.TradeName.Contains(term)),
                     "lastname" => query.Where(c => c.CustomerType == CustomerType.Natural && c.LastName != null && c.LastName.StartsWith(term)),
                     // Name es la columna calculada persistida "Apellidos Nombres", permite buscar nombres compuestos ("Trujillo Pérez").
                     "name" => query.Where(c => c.CustomerType == CustomerType.Natural && c.Name.Contains(term)),

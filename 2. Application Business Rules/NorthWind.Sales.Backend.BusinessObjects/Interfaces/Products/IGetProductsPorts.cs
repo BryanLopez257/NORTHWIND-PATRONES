@@ -7,5 +7,5 @@ public interface IGetProductsInputPort
 
 public interface IGetProductsOutputPort
 {
-    Task Handle(IEnumerable<ProductDto> products);
+    Task Handle(PagedResultDto<ProductDto> products);
 }

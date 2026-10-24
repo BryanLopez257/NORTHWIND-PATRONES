@@ -2,7 +2,8 @@
 import { ref, computed, watch } from 'vue';
 import { Search, Plus, Check, AlertCircle, Package, X, CheckCircle2, ArrowLeftRight } from 'lucide-vue-next';
 import { useProducts } from '@/features/products/composables/useProducts';
-import type { ProductDto } from '@/features/products/types';
+import type { ProductDto, ProductFilters } from '@/features/products/types';
+import { useDebounce } from '@/shared/utils/useDebounce';
 import {
   Dialog,
   Input,
@@ -39,44 +40,30 @@ const emit = defineEmits<{
 }>();
 
 const searchTerm = ref('');
+const debouncedSearchTerm = useDebounce(searchTerm, 350);
 const searchCriteria = ref<'all' | 'name' | 'id'>('all');
 const onlyInStock = ref(true);
-
-const { data: products, isLoading, error } = useProducts();
-const productList = computed(() => products.value ?? []);
 
 const currentPage = ref(1);
 const pageSize = 5;
 
-watch([searchTerm, searchCriteria, onlyInStock], () => {
+const filters = computed<ProductFilters>(() => {
+  return {
+    searchTerm: debouncedSearchTerm.value.trim() || undefined,
+    stockFilter: onlyInStock.value ? 1 : undefined,
+    pageNumber: currentPage.value,
+    pageSize,
+  };
+});
+
+watch([debouncedSearchTerm, onlyInStock], () => {
   currentPage.value = 1;
 });
 
-const filteredProducts = computed(() => {
-  return productList.value.filter((p) => {
-    if (onlyInStock.value && p.unitsInStock <= 0) {
-      return false;
-    }
-
-    if (searchTerm.value.trim()) {
-      const term = searchTerm.value.trim().toLowerCase();
-      if (searchCriteria.value === 'id') {
-        return p.id.toString().includes(term);
-      }
-      if (searchCriteria.value === 'name') {
-        return p.name.toLowerCase().includes(term);
-      }
-      return p.name.toLowerCase().includes(term) || p.id.toString().includes(term);
-    }
-
-    return true;
-  });
-});
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return filteredProducts.value.slice(start, start + pageSize);
-});
+const { data: pagedData, isLoading, error } = useProducts(filters);
+const productList = computed(() => pagedData.value?.items ?? []);
+const totalCount = computed(() => pagedData.value?.totalCount ?? 0);
+const totalPages = computed(() => pagedData.value?.totalPages ?? 1);
 
 const handleSelect = (product: ProductDto) => {
   if (product.unitsInStock <= 0 || props.selectedProductIds.includes(product.id)) {
@@ -154,7 +141,7 @@ const getPlaceholder = () => {
           <span>Error al obtener productos. Por favor intente nuevamente.</span>
         </div>
 
-        <div v-else-if="filteredProducts.length === 0" class="p-8 text-center text-slate-400">
+        <div v-else-if="productList.length === 0" class="p-8 text-center text-slate-400">
           No se encontraron productos coincidentes con los filtros aplicados.
         </div>
 
@@ -170,7 +157,7 @@ const getPlaceholder = () => {
           </TableHeader>
           <TableBody>
             <TableRow
-              v-for="product in paginatedProducts"
+              v-for="product in productList"
               :key="product.id"
               :class="selectedProductIds.includes(product.id) ? 'bg-amber-50/30' : ''"
             >
@@ -228,13 +215,17 @@ const getPlaceholder = () => {
       <!-- Paginación -->
       <Pagination
         v-model:current-page="currentPage"
-        :total-items="filteredProducts.length"
+        :total-count="totalCount"
+        :total-pages="totalPages"
         :page-size="pageSize"
         item-name="productos"
       />
 
       <!-- Footer -->
-      <div class="flex justify-end pt-1">
+      <div class="flex justify-between items-center pt-1">
+        <span class="text-xs text-slate-500">
+          Mostrando {{ productList.length }} de {{ totalCount }} productos
+        </span>
         <Button type="button" variant="outline" @click="emit('update:open', false)">
           Cerrar Catálogo
         </Button>

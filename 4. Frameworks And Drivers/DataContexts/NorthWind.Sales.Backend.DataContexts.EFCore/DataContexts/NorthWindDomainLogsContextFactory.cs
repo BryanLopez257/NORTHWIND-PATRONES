@@ -4,9 +4,14 @@ internal class NorthWindDomainLogsContextFactory : IDesignTimeDbContextFactory<N
 {
     public NorthWindDomainLogsContext CreateDbContext(string[] args)
     {
+        DotEnvLoader.Load();
+
+        string connectionString = Environment.GetEnvironmentVariable("DBOptions__DomainLogsConnectionString")
+            ?? @"Server=localhost,1433;Database=NorthWindLogsDB;User Id=sa;Password=YourPasswordHere!;TrustServerCertificate=True;";
+
         var options = Microsoft.Extensions.Options.Options.Create(new DBOptions
         {
-            DomainLogsConnectionString = @"Server=127.0.0.1,1433;Database=NorthWindLogsDB;User Id=sa;Password=1234;TrustServerCertificate=True;Encrypt=True;"
+            DomainLogsConnectionString = connectionString
         });
         return new NorthWindDomainLogsContext(options);
     }

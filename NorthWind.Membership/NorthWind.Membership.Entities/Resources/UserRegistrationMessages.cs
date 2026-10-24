@@ -18,8 +18,8 @@ public static class UserRegistrationMessages
 
     public static string RequiredEmailErrorMessage => "El correo es requerido.";
     public static string InvalidEmailErrorMessage => "El formato de correo no es válido.";
-    public static string EmailTooLongErrorMessage => "El correo no debe superar los 100 caracteres.";
-    public static string EmailInvalidCharactersErrorMessage => "El correo solo puede contener letras, números, punto (.) y arroba (@). No se permiten otros caracteres especiales, espacios ni emojis.";
+    public static string EmailTooLongErrorMessage => "El correo no debe superar los 254 caracteres.";
+    public static string EmailInvalidCharactersErrorMessage => "El correo solo puede contener caracteres válidos (letras, números, '.', '+', '-', '_', '@'). No se permiten otros caracteres especiales, espacios ni emojis.";
 
     public static string RequiredPasswordErrorMessage => "La contraseña es requerida.";
     public static string PasswordTooShortErrorMessage => "Se requiere al menos 6 caracteres en la contraseña.";

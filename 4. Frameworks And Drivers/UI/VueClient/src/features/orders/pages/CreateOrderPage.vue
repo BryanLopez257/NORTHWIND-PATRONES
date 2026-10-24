@@ -6,6 +6,7 @@
  * ============================================================================
  * Paridad 1:1 con la versión React:
  * 1. Selección interactiva de cliente con validación reactiva de saldo deudor.
+ *    Sincronización automática de Cédula/RUC desde la ficha del cliente (ReadOnly).
  * 2. Contadores en vivo para Dirección (X/60), Ciudad (X/15), País (X/15) y Código Postal (X/10).
  * 3. Líneas de productos con botones +/- y entrada manual por teclado.
  *    Alerta reactiva "Excede stock disponible" y bloqueo de envío.
@@ -29,7 +30,7 @@ import {
   Users,
   ArrowLeftRight,
 } from 'lucide-vue-next';
-import { useCustomers } from '@/features/customers/composables/useCustomers';
+import { customersService } from '@/features/customers/customersService';
 import type { CustomerDto } from '@/features/customers/types';
 import type { ProductDto } from '@/features/products/types';
 import { useCreateOrder } from '../composables/useCreateOrder';
@@ -70,13 +71,12 @@ import {
   handlePasteFilter,
 } from '@/core/utils/inputFilters';
 
-// 1. Carga de clientes desde TanStack Query
-const { data: customers } = useCustomers();
-const customerList = computed(() => customers.value ?? []);
 const createOrderMutation = useCreateOrder();
 
 // 2. Estado del Formulario
 const selectedCustomerId = ref<string>('');
+const selectedCustomer = ref<CustomerDto | null>(null);
+const customerLookupError = ref<string | null>(null);
 const showCustomerModal = ref<boolean>(false);
 const customerDocument = ref<string>('');
 const shipAddress = ref<string>('');
@@ -104,34 +104,23 @@ const issuedInvoice = ref<InvoiceResponseDto | null>(null);
 // Error general de envío
 const formError = ref<string | null>(null);
 
-// 6. Obtener objeto del cliente seleccionado
-const selectedCustomer = computed<CustomerDto | undefined>(() => {
-  if (!selectedCustomerId.value) return undefined;
-  return customerList.value.find(
-    (c) => c.id.toUpperCase() === selectedCustomerId.value.toUpperCase()
-  );
-});
-
 // Regla de Negocio: Condición de Crédito (Saldo pendiente > 0 bloquea la venta)
 const hasPendingBalance = computed(() => (selectedCustomer.value?.currentBalance ?? 0) > 0);
 
 // Mensaje de validación del cliente
 const customerErrorMessage = computed(() => {
+  if (customerLookupError.value) {
+    return customerLookupError.value;
+  }
   if (!selectedCustomerId.value) {
     return touched.value.customer ? 'Debe seleccionar un cliente del catálogo.' : '';
   }
-
-  if (selectedCustomerId.value.length === 5) {
-    if (!selectedCustomer.value) {
-      return `El cliente con código "${selectedCustomerId.value}" no existe en la base de datos.`;
-    }
-    if (selectedCustomer.value.currentBalance > 0) {
-      return `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${Number(selectedCustomer.value.currentBalance).toFixed(2)}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`;
-    }
-  } else if (touched.value.customer) {
+  if (selectedCustomerId.value.length < 5 && touched.value.customer) {
     return 'El código de cliente debe tener exactamente 5 letras.';
   }
-
+  if (selectedCustomer.value && hasPendingBalance.value) {
+    return `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${Number(selectedCustomer.value.currentBalance).toFixed(2)}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`;
+  }
   return '';
 });
 
@@ -150,7 +139,7 @@ const documentValidation = computed(() => {
   }
 
   // Regla especial para Empresas: obligatorio RUC de 13 dígitos
-  if (selectedCustomer.value?.customerType === 'Empresa') {
+  if (selectedCustomer.value?.customerType === 'Empresa' || selectedCustomer.value?.customerType === 2) {
     if (cleanDoc.length === 10) {
       return {
         isValid: false,
@@ -258,16 +247,53 @@ const isSubmitDisabled = computed(() => {
 });
 
 // Manejadores de interacción de Cliente
-const handleCustomerIdInput = (val: string) => {
-  selectedCustomerId.value = sanitizeAlphaUpper(val, 5);
+const handleCustomerIdInput = async (val: string) => {
+  const clean = sanitizeAlphaUpper(val, 5);
+  selectedCustomerId.value = clean;
+  customerLookupError.value = null;
+
+  if (clean.length === 5) {
+    try {
+      const found = await customersService.getCustomerById(clean);
+      if (found && found.id) {
+        selectedCustomer.value = found;
+        if (found.identification) {
+          customerDocument.value = found.identification;
+          markTouched('customerDocument');
+        }
+        if (found.currentBalance > 0) {
+          customerLookupError.value = `No se puede seleccionar al cliente porque posee un saldo deudor pendiente de $${Number(found.currentBalance).toFixed(2)}. Clientes con saldo pendiente no están autorizados para emitir órdenes.`;
+        }
+      } else {
+        selectedCustomer.value = null;
+        customerLookupError.value = `El cliente con código "${clean}" no existe en la base de datos.`;
+      }
+    } catch {
+      selectedCustomer.value = null;
+      customerLookupError.value = `El cliente con código "${clean}" no existe en la base de datos.`;
+    }
+  } else {
+    selectedCustomer.value = null;
+    customerDocument.value = '';
+  }
 };
 
 const handleCustomerIdPaste = (e: ClipboardEvent) => {
-  handlePasteFilter(e, (text) => sanitizeAlphaUpper(text, 5));
+  handlePasteFilter(e, (text) => {
+    const clean = sanitizeAlphaUpper(text, 5);
+    handleCustomerIdInput(clean);
+    return clean;
+  });
 };
 
 const handleSelectCustomer = (customer: CustomerDto) => {
+  selectedCustomer.value = customer;
   selectedCustomerId.value = customer.id.toUpperCase();
+  customerLookupError.value = null;
+  if (customer.identification) {
+    customerDocument.value = customer.identification;
+    markTouched('customerDocument');
+  }
   markTouched('customer');
   formError.value = null;
 };
@@ -379,6 +405,8 @@ const confirmRemoveItem = () => {
 
 const handleResetForm = () => {
   selectedCustomerId.value = '';
+  selectedCustomer.value = null;
+  customerLookupError.value = null;
   customerDocument.value = '';
   shipAddress.value = '';
   shipCity.value = '';
@@ -527,11 +555,11 @@ const onSubmit = async () => {
               <!-- Insignias informativas del cliente seleccionado -->
               <div v-if="selectedCustomer" class="mt-2 flex items-center gap-2">
                 <Badge
-                  :variant="selectedCustomer.customerType === 'Empresa' ? 'info' : 'default'"
+                  :variant="selectedCustomer.customerType === 'Empresa' || selectedCustomer.customerType === 2 ? 'info' : 'default'"
                   class="text-[11px]"
                 >
                   <Building2 class="h-3 w-3 mr-1" />
-                  {{ selectedCustomer.customerType }}
+                  {{ selectedCustomer.customerType === 'Empresa' || selectedCustomer.customerType === 2 ? 'Empresa' : 'Persona Natural' }}
                 </Badge>
                 <Badge
                   :variant="selectedCustomer.currentBalance <= 0 ? 'success' : 'danger'"
@@ -542,18 +570,20 @@ const onSubmit = async () => {
               </div>
             </div>
 
-            <!-- Identificación Tributaria (Cédula o RUC con validación en tiempo real) -->
+            <!-- Identificación Tributaria (Cédula o RUC con validación en tiempo real y ReadOnly si está registrada) -->
             <div>
               <Input
                 id="order-doc"
                 label="Cédula / RUC (Ecuador) *"
                 placeholder="1790012345001"
                 :max-length="13"
+                :readonly="Boolean(selectedCustomer?.identification)"
                 :error="errors.customerDocument"
                 :model-value="customerDocument"
                 @update:model-value="customerDocument = sanitizeDigits($event).slice(0, 13)"
                 @blur="markTouched('customerDocument')"
                 @keydown="allowOnlyDigits"
+                :class="selectedCustomer?.identification ? 'bg-slate-50 cursor-not-allowed' : undefined"
               />
               <p v-if="customerDocument && documentValidation.isValid" class="text-xs text-emerald-600 mt-1 font-medium">
                 ✓ {{ documentValidation.message }}
@@ -735,7 +765,8 @@ const onSubmit = async () => {
                       <button
                         type="button"
                         @click="handleUpdateQuantity(item.productId, item.quantity + 1)"
-                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm"
+                        :disabled="item.quantity >= item.unitsInStock"
+                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm disabled:opacity-40"
                       >
                         +
                       </button>

@@ -7,5 +7,5 @@ public interface IGetInvoicesInputPort
 
 public interface IGetInvoicesOutputPort
 {
-    Task Handle(IEnumerable<InvoiceResponseDto> invoices);
+    Task Handle(PagedResultDto<InvoiceResponseDto> invoices);
 }

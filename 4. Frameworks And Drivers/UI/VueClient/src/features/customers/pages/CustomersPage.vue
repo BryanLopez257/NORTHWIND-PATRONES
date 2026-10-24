@@ -41,6 +41,7 @@ import { getErrorMessage } from '@/core/api/apiClient';
 import { cn } from '@/shared/utils/cn';
 
 const searchTermInput = ref('');
+const searchCriteria = ref<'all' | 'id' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename'>('all');
 const debouncedSearchTerm = useDebounce(searchTermInput, 350);
 
 const customerTypeFilter = ref('Todos');
@@ -49,6 +50,9 @@ const minBalanceInput = ref<string>('');
 const maxBalanceInput = ref<string>('');
 const orderBy = ref<'name' | 'id' | 'balance'>('name');
 const ascending = ref<boolean>(true);
+
+const currentPage = ref(1);
+const pageSize = 10;
 
 // Modal states
 const modalOpen = ref(false);
@@ -71,18 +75,28 @@ const filters = computed<CustomerFilters>(() => {
       : undefined;
 
   return {
-    searchTerm: debouncedSearchTerm.value,
+    searchTerm: debouncedSearchTerm.value.trim() || undefined,
+    criteria: searchCriteria.value !== 'all' ? searchCriteria.value : undefined,
     customerType: customerTypeFilter.value !== 'Todos' ? customerTypeFilter.value : undefined,
     balanceFilter: balanceFilter.value > 0 ? balanceFilter.value : undefined,
     minBalance: parsedMinBalance,
     maxBalance: parsedMaxBalance,
     orderBy: orderBy.value,
     ascending: ascending.value,
+    pageNumber: currentPage.value,
+    pageSize,
   };
 });
 
+watch(
+  [searchTermInput, searchCriteria, customerTypeFilter, balanceFilter, minBalanceInput, maxBalanceInput, orderBy, ascending],
+  () => {
+    currentPage.value = 1;
+  }
+);
+
 const {
-  data: customers,
+  data: pagedData,
   isLoading,
   isError,
   error,
@@ -90,20 +104,9 @@ const {
   isFetching,
 } = useCustomers(filters);
 
-const customerItems = computed(() => customers.value ?? []);
-
-const currentPage = ref(1);
-const pageSize = 10;
-
-watch([searchTermInput, customerTypeFilter, balanceFilter, minBalanceInput, maxBalanceInput, orderBy, ascending], () => {
-  currentPage.value = 1;
-});
-
-const paginatedCustomers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return customerItems.value.slice(start, start + pageSize);
-});
-
+const customerItems = computed(() => pagedData.value?.items ?? []);
+const totalCount = computed(() => pagedData.value?.totalCount ?? 0);
+const totalPages = computed(() => pagedData.value?.totalPages ?? 1);
 
 const handleOpenCreate = () => {
   selectedCustomer.value = null;
@@ -117,12 +120,34 @@ const handleOpenEdit = (customer: CustomerDto) => {
 
 const handleResetFilters = () => {
   searchTermInput.value = '';
+  searchCriteria.value = 'all';
   customerTypeFilter.value = 'Todos';
   balanceFilter.value = 0;
   minBalanceInput.value = '';
   maxBalanceInput.value = '';
   orderBy.value = 'name';
   ascending.value = true;
+  currentPage.value = 1;
+};
+
+const getSearchPlaceholder = () => {
+  switch (searchCriteria.value) {
+    case 'id':
+      return 'Buscar por código (ej: ALFKI)...';
+    case 'identification':
+      return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
+    case 'name':
+      return 'Buscar por nombres y apellidos...';
+    case 'lastname':
+      return 'Buscar por primer apellido...';
+    case 'businessname':
+      return 'Buscar por razón social de la empresa...';
+    case 'tradename':
+      return 'Buscar por nombre comercial...';
+    case 'all':
+    default:
+      return 'Buscar por código, nombres o identificación...';
+  }
 };
 
 const handleConfirmDelete = async () => {
@@ -149,6 +174,7 @@ const formatCurrency = (val: number) => {
 const hasActiveFilters = computed(() => {
   return (
     searchTermInput.value.trim() !== '' ||
+    searchCriteria.value !== 'all' ||
     customerTypeFilter.value !== 'Todos' ||
     balanceFilter.value !== 0 ||
     minBalanceInput.value !== '' ||
@@ -198,22 +224,6 @@ const hasActiveFilters = computed(() => {
 
       <button
         type="button"
-        @click="customerTypeFilter = 'Empresa'"
-        :class="
-          cn(
-            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
-            customerTypeFilter === 'Empresa'
-              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
-              : 'text-slate-600 hover:text-slate-900'
-          )
-        "
-      >
-        <Building2 class="h-3.5 w-3.5 text-sky-600" />
-        <span>Empresas</span>
-      </button>
-
-      <button
-        type="button"
         @click="customerTypeFilter = 'Persona Natural'"
         :class="
           cn(
@@ -224,127 +234,154 @@ const hasActiveFilters = computed(() => {
           )
         "
       >
-        <User class="h-3.5 w-3.5 text-indigo-600" />
+        <User class="h-3.5 w-3.5" />
         <span>Personas Naturales</span>
+      </button>
+
+      <button
+        type="button"
+        @click="customerTypeFilter = 'Empresa'"
+        :class="
+          cn(
+            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
+            customerTypeFilter === 'Empresa'
+              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          )
+        "
+      >
+        <Building2 class="h-3.5 w-3.5" />
+        <span>Empresas / Jurídicas</span>
       </button>
     </div>
 
-    <!-- Filtros de Búsqueda y Segmentación -->
-    <Card class="border-slate-200 shadow-xs">
-      <CardContent class="p-4 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-          <!-- Búsqueda por texto -->
-          <div class="lg:col-span-4">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Búsqueda por Nombre o ID
+    <!-- Filtros y Búsqueda -->
+    <Card>
+      <CardContent class="pt-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <!-- Criterio de Búsqueda -->
+          <div class="md:col-span-3">
+            <label for="filter-criteria" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
+              Criterio de Búsqueda
+            </label>
+            <select
+              id="filter-criteria"
+              v-model="searchCriteria"
+              class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
+            >
+              <optgroup label="Búsqueda General">
+                <option value="all">🔍 Todos los campos</option>
+                <option value="tradename">🏪 Nombre Comercial</option>
+                <option value="identification">🪪 Cédula / RUC</option>
+                <option value="id">🏷️ Código ID</option>
+              </optgroup>
+              <optgroup label="Personas Naturales">
+                <option value="name">👤 Nombres y Apellidos</option>
+                <option value="lastname">👤 Solo Primer Apellido</option>
+              </optgroup>
+              <optgroup label="Empresas / Jurídicas">
+                <option value="businessname">🏢 Razón Social</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- Input de Búsqueda -->
+          <div class="md:col-span-3">
+            <label for="search-customers" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
+              Término a Buscar
             </label>
             <div class="relative">
               <Search class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Buscar por ALFKI o Alfreds..."
+                id="search-customers"
+                :placeholder="getSearchPlaceholder()"
                 v-model="searchTermInput"
                 class="pl-9"
               />
             </div>
           </div>
 
-          <!-- Filtro de saldo -->
-          <div class="lg:col-span-3">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Estado de Cuenta (Saldo)
+          <!-- Estado de Saldo -->
+          <div class="md:col-span-2">
+            <label for="filter-balance" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
+              Estado de Saldo
             </label>
             <select
-              v-model.number="balanceFilter"
-              class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              id="filter-balance"
+              v-model="balanceFilter"
+              class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
             >
-              <option :value="0">Todos los Saldos</option>
-              <option :value="1">Al Día (Saldo $0.00)</option>
-              <option :value="2">Con Saldo Pendiente (> $0.00)</option>
-              <option :value="3">Saldo Alto (>= $100.00)</option>
+              <option :value="0">Todos los Estados</option>
+              <option :value="1">Al Día ($0.00)</option>
+              <option :value="2">Con Saldo Pendiente (&gt; $0)</option>
+              <option :value="3">Saldo Crítico (&gt;= $100)</option>
             </select>
           </div>
 
-          <!-- Rango Min - Max -->
-          <div class="lg:col-span-3 grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Saldo Mín.
-              </label>
+          <!-- Rango de Saldo -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">
+              Rango de Saldo ($)
+            </label>
+            <div class="flex items-center gap-1">
               <Input
                 type="number"
-                placeholder="0.00"
+                placeholder="Mín"
                 v-model="minBalanceInput"
+                class="h-10 text-xs px-2"
+                min="0"
+                step="0.01"
               />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Saldo Máx.
-              </label>
+              <span class="text-slate-400 text-xs">-</span>
               <Input
                 type="number"
-                placeholder="500.00"
+                placeholder="Máx"
                 v-model="maxBalanceInput"
+                class="h-10 text-xs px-2"
+                min="0"
+                step="0.01"
               />
             </div>
           </div>
 
-          <!-- Ordenación -->
-          <div class="lg:col-span-2 flex gap-1 items-center">
+          <!-- Ordenación y Botón Limpiar -->
+          <div class="md:col-span-2 flex gap-2 items-center">
             <div class="flex-1">
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+              <label for="filter-order" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
                 Ordenar
               </label>
               <select
+                id="filter-order"
                 v-model="orderBy"
-                class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
               >
                 <option value="name">Nombre</option>
-                <option value="id">ID</option>
+                <option value="id">Código ID</option>
                 <option value="balance">Saldo</option>
               </select>
             </div>
+
             <Button
               type="button"
               variant="outline"
               size="icon"
               @click="ascending = !ascending"
-              class="h-10 w-10 mt-5 shrink-0"
-              :title="ascending ? 'Ascendente (clic para descendente)' : 'Descendente (clic para ascendente)'"
+              :title="ascending ? 'Ascendente (A-Z)' : 'Descendente (Z-A)'"
+              class="h-10 w-10 shrink-0 self-end"
             >
-              <ArrowUpDown class="h-4 w-4 text-slate-600" />
+              <ArrowUpDown class="h-4 w-4" />
             </Button>
-          </div>
-        </div>
 
-        <!-- Botones de Acción de Filtros -->
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-          <span class="text-slate-500 font-medium">
-            Se encontraron <strong class="text-slate-800">{{ customerItems.length }}</strong> cliente(s)
-          </span>
-
-          <div class="flex items-center gap-2">
             <Button
               v-if="hasActiveFilters"
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
               @click="handleResetFilters"
-              class="h-8 text-xs text-slate-500 hover:text-slate-700"
+              title="Restablecer todos los filtros"
+              class="h-10 w-10 shrink-0 self-end text-slate-500 hover:text-slate-800"
             >
-              <RotateCcw class="h-3 w-3 mr-1" />
-              Restablecer Filtros
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="() => refetch()"
-              :disabled="isFetching"
-              class="h-8 text-xs text-slate-600"
-            >
-              <RefreshCw :class="cn('h-3 w-3 mr-1', isFetching && 'animate-spin')" />
-              Actualizar
+              <RotateCcw class="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -352,50 +389,81 @@ const hasActiveFilters = computed(() => {
     </Card>
 
     <!-- Tabla de Clientes -->
-    <Card class="border-slate-200 shadow-xs overflow-hidden">
+    <Card>
+      <CardHeader class="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle class="text-base font-semibold text-slate-800">
+            Listado de Clientes ({{ totalCount }} registros)
+          </CardTitle>
+          <CardDescription class="text-xs">
+            Directorio comercial clasificado con control de crédito
+          </CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          @click="() => refetch()"
+          :disabled="isFetching"
+          class="h-8 text-xs"
+        >
+          <RefreshCw :class="cn('h-3.5 w-3.5 mr-1.5', isFetching && 'animate-spin')" />
+          Actualizar
+        </Button>
+      </CardHeader>
+
       <CardContent class="p-0">
         <div v-if="isLoading" class="p-12 text-center text-slate-500">
-          <RefreshCw class="h-8 w-8 mx-auto text-sky-600 animate-spin mb-3" />
-          <p class="font-medium text-sm">Cargando catálogo de clientes...</p>
+          <RefreshCw class="h-6 w-6 animate-spin mx-auto text-sky-600 mb-2" />
+          <p class="text-sm">Cargando directorio de clientes...</p>
         </div>
 
-        <div v-else-if="isError" class="p-8 text-center text-rose-600 space-y-2">
-          <AlertCircle class="h-8 w-8 mx-auto text-rose-500" />
+        <div v-else-if="isError" class="p-12 text-center text-red-600">
+          <AlertCircle class="h-8 w-8 mx-auto text-red-500 mb-2" />
           <p class="font-semibold text-sm">Error al cargar clientes</p>
-          <p class="text-xs text-slate-500">{{ getErrorMessage(error) }}</p>
-          <Button variant="outline" size="sm" @click="() => refetch()" class="mt-2">
+          <p class="text-xs text-slate-500 mt-1">{{ (error as any)?.message }}</p>
+          <Button variant="outline" size="sm" @click="() => refetch()" class="mt-4">
             Reintentar
           </Button>
         </div>
 
-        <div v-else-if="customerItems.length === 0" class="p-12 text-center text-slate-400 space-y-3">
-          <Users class="h-10 w-10 mx-auto text-slate-300" />
-          <p class="font-medium text-sm text-slate-600">No se encontraron clientes</p>
-          <p class="text-xs text-slate-400">Intente modificar los filtros de búsqueda o registre un nuevo cliente.</p>
+        <div v-else-if="customerItems.length === 0" class="p-12 text-center text-slate-400">
+          <Users class="h-8 w-8 mx-auto text-slate-300 mb-2" />
+          <p class="font-medium text-slate-600 text-sm">No se encontraron clientes</p>
+          <p class="text-xs text-slate-400 mt-1">
+            Intente ajustar los filtros de búsqueda o registre un nuevo cliente.
+          </p>
         </div>
 
         <Table v-else>
           <TableHeader>
             <TableRow>
-              <TableHead class="w-24">ID</TableHead>
+              <TableHead class="w-24">Código ID</TableHead>
               <TableHead>Nombre o Razón Social</TableHead>
-              <TableHead>Tipo de Cliente</TableHead>
-              <TableHead class="text-right">Saldo Comercial</TableHead>
-              <TableHead class="text-center w-32">Estado</TableHead>
+              <TableHead class="w-36">Tipo</TableHead>
+              <TableHead class="text-right w-36">Saldo Comercial</TableHead>
+              <TableHead class="text-center w-36">Estado</TableHead>
               <TableHead class="text-right w-24">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="c in paginatedCustomers" :key="c.id">
-              <TableCell class="font-mono text-xs font-bold text-sky-700">
+            <TableRow v-for="c in customerItems" :key="c.id">
+              <TableCell class="font-mono font-bold text-xs text-sky-700">
                 {{ c.id }}
               </TableCell>
               <TableCell class="font-medium text-slate-900">
-                {{ c.name }}
+                <div>{{ c.name }}</div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5 font-normal">
+                  <span v-if="c.identification" class="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                    🪪 {{ c.identification }}
+                  </span>
+                  <span v-if="c.tradeName" class="text-sky-600 font-medium">
+                    🏪 {{ c.tradeName }}
+                  </span>
+                </div>
               </TableCell>
               <TableCell>
                 <Badge
-                  v-if="c.customerType === 'Empresa'"
+                  v-if="c.customerType === 'Empresa' || c.customerType === 2"
                   variant="info"
                   class="inline-flex items-center gap-1"
                 >
@@ -472,7 +540,15 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableBody>
         </Table>
-        <Pagination v-model:current-page="currentPage" :total-items="customerItems.length" :page-size="pageSize" item-name="clientes" />
+
+        <!-- Paginación de Servidor -->
+        <Pagination
+          v-model:current-page="currentPage"
+          :total-count="totalCount"
+          :total-pages="totalPages"
+          :page-size="pageSize"
+          item-name="clientes"
+        />
       </CardContent>
     </Card>
 

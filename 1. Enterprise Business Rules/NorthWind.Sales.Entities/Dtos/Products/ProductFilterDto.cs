@@ -1,6 +1,6 @@
 namespace NorthWind.Sales.Entities.Dtos.Products;
 
-public class ProductFilterDto
+public class ProductFilterDto : PaginationFilterDto
 {
     public string SearchTerm { get; set; }
     public decimal? MinPrice { get; set; }

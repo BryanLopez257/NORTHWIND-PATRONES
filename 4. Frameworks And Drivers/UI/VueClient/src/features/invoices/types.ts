@@ -1,3 +1,5 @@
+import type { PagedResult } from '@/shared/types/pagination';
+
 export interface InvoiceDetailResponseDto {
   productId: number;
   productName: string;
@@ -26,6 +28,11 @@ export interface InvoiceResponseDto {
 }
 
 export interface InvoiceFilters {
+  searchTerm?: string;
   invoiceNumber?: string;
   customerName?: string;
+  pageNumber?: number;
+  pageSize?: number;
 }
+
+export type { PagedResult };

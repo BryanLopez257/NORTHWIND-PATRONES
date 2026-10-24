@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-vue-next';
 import { ApiError, getErrorMessage } from '@/core/api/apiClient';
-import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui';
+import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent, Dialog } from '@/shared/ui';
 import {
   allowOnlyLettersAndSpaces,
   sanitizeLettersAndSpaces,
@@ -13,6 +13,7 @@ import {
 } from '@/core/utils/inputFilters';
 import { authService } from '../authService';
 import { registerSchema, type RegisterFormData } from '../schemas';
+import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator.vue';
 
 const router = useRouter();
 
@@ -28,11 +29,37 @@ const formData = ref<RegisterFormData>({
 
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
+const showLeaveConfirmModal = ref(false);
 
 const errors = ref<Record<string, string>>({});
 const serverError = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const isLoading = ref(false);
+
+const isFormDirtyOrFilled = computed(() => {
+  return (
+    Boolean(formData.value.firstName.trim()) ||
+    Boolean(formData.value.secondName?.trim()) ||
+    Boolean(formData.value.lastName.trim()) ||
+    Boolean(formData.value.secondLastName?.trim()) ||
+    Boolean(formData.value.email.trim()) ||
+    Boolean(formData.value.password) ||
+    Boolean(formData.value.confirmPassword)
+  );
+});
+
+const handleGoToLogin = () => {
+  if (isFormDirtyOrFilled.value) {
+    showLeaveConfirmModal.value = true;
+  } else {
+    router.push('/login');
+  }
+};
+
+const handleConfirmLeave = () => {
+  showLeaveConfirmModal.value = false;
+  router.push('/login');
+};
 
 const handleFirstNameInput = (val: string) => {
   formData.value.firstName = sanitizeLettersAndSpaces(val).slice(0, 50);
@@ -55,7 +82,7 @@ const handleLettersPaste = (event: ClipboardEvent) => {
 };
 
 const handleEmailPaste = (event: ClipboardEvent) => {
-  handlePasteFilter(event, (text) => sanitizeEmail(text, 100));
+  handlePasteFilter(event, (text) => sanitizeEmail(text, 254));
 };
 
 const validateAll = (): boolean => {
@@ -82,7 +109,7 @@ const onSubmit = async () => {
   isLoading.value = true;
   try {
     await authService.register({
-      email: formData.value.email.trim(),
+      email: formData.value.email.trim().toLowerCase(),
       password: formData.value.password,
       firstName: formData.value.firstName.trim(),
       lastName: formData.value.lastName.trim(),
@@ -246,17 +273,17 @@ const onSubmit = async () => {
           <div>
             <Input
               id="reg-email"
-              label="Correo *"
-              type="text"
+              label="Correo electrónico *"
+              type="email"
               placeholder="ejemplo@northwind.com"
-              :max-length="100"
+              :max-length="254"
               auto-complete="email"
               :error="errors.email"
               v-model="formData.email"
               @keydown="allowEmailChars"
               @paste="handleEmailPaste"
             />
-            <p class="text-[11px] text-slate-500 mt-1">Solo letras, números, punto (.) y arroba (@). Máx. 100 caracteres.</p>
+            <p class="text-[11px] text-slate-500 mt-1">Permite letras, números, '.', '+', '-', '_' y '@'. Máx. 254 caracteres.</p>
           </div>
 
           <!-- Contraseñas -->
@@ -284,7 +311,12 @@ const onSubmit = async () => {
                   </button>
                 </template>
               </Input>
-              <p class="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis.</p>
+              <PasswordStrengthIndicator
+                v-if="formData.password.length > 0"
+                :password="formData.password"
+                class="mt-2"
+              />
+              <p v-else class="text-[11px] text-slate-500 mt-1">Mín. 6, mayúscula, dígito y símbolo. Sin emojis.</p>
             </div>
 
             <div>
@@ -321,14 +353,40 @@ const onSubmit = async () => {
 
         <div class="mt-6 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
           ¿Ya tienes una cuenta registrada?
-          <RouterLink
-            to="/login"
-            class="inline-flex items-center font-medium text-sky-600 hover:text-sky-700 hover:underline ml-1"
+          <button
+            type="button"
+            @click="handleGoToLogin"
+            class="inline-flex items-center font-medium text-sky-600 hover:text-sky-700 hover:underline ml-1 cursor-pointer focus:outline-none"
           >
             Iniciar sesión
-          </RouterLink>
+          </button>
         </div>
       </CardContent>
     </Card>
+
+    <!-- Modal de confirmación al salir con campos llenos/dirty -->
+    <Dialog
+      :open="showLeaveConfirmModal"
+      @update:open="showLeaveConfirmModal = $event"
+      title="¿Desea salir del registro?"
+      description="Tiene datos ingresados en el formulario. Si va a iniciar sesión ahora, se perderán todos los datos completados. ¿Desea continuar?"
+    >
+      <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+        <Button
+          type="button"
+          variant="outline"
+          @click="showLeaveConfirmModal = false"
+        >
+          Permanecer aquí
+        </Button>
+        <Button
+          type="button"
+          class="bg-sky-600 hover:bg-sky-700 text-white"
+          @click="handleConfirmLeave"
+        >
+          Sí, ir a Iniciar sesión
+        </Button>
+      </div>
+    </Dialog>
   </div>
 </template>

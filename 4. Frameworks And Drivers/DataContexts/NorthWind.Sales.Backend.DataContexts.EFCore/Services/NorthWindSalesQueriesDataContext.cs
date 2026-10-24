@@ -25,6 +25,9 @@ internal class NorthWindSalesQueriesDataContext :
     public async Task<IEnumerable<ReturnType>> ToListAsync<ReturnType>(IQueryable<ReturnType> queryable) =>
         await queryable.ToListAsync();
 
+    public Task<int> CountAsync<ReturnType>(IQueryable<ReturnType> queryable) =>
+        queryable.CountAsync();
+
     public Task<bool> AnyAsync<ReturnType>(IQueryable<ReturnType> queryable) =>
         queryable.AnyAsync();
 }

@@ -2,9 +2,9 @@ namespace NorthWind.Sales.Backend.Presenters.Products;
 
 public class GetProductsPresenter : IGetProductsOutputPort
 {
-    public IEnumerable<ProductDto> Products { get; private set; }
+    public PagedResultDto<ProductDto> Products { get; private set; }
 
-    public Task Handle(IEnumerable<ProductDto> products)
+    public Task Handle(PagedResultDto<ProductDto> products)
     {
         Products = products;
         return Task.CompletedTask;

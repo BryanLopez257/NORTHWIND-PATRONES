@@ -7,5 +7,5 @@ public interface IGetCustomersInputPort
 
 public interface IGetCustomersOutputPort
 {
-    Task Handle(IEnumerable<CustomerDto> customers);
+    Task Handle(PagedResultDto<CustomerDto> customers);
 }

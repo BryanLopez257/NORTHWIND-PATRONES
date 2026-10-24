@@ -1,4 +1,4 @@
-﻿BEGIN TRANSACTION;
+BEGIN TRANSACTION;
 GO
 
 IF NOT EXISTS (
@@ -14,7 +14,7 @@ BEGIN
         [CustomerFullNameSnapshot] nvarchar(100) NULL,
         [CustomerAddressSnapshot] nvarchar(200) NULL,
         [CustomerPhoneSnapshot] nvarchar(50) NULL,
-        [CustomerEmailSnapshot] nvarchar(100) NULL,
+        [CustomerEmailSnapshot] nvarchar(254) NULL,
         [SellerFullNameSnapshot] nvarchar(100) NULL,
         [SubTotal] decimal(18,2) NOT NULL,
         [Tax] decimal(18,2) NOT NULL,

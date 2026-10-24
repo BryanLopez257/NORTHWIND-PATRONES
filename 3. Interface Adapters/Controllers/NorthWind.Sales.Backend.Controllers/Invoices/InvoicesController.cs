@@ -18,15 +18,21 @@ public static class InvoicesController
     }
 
     private static async Task<IResult> GetInvoices(
+        string? searchTerm,
         string? invoiceNumber,
         string? customerName,
+        int? pageNumber,
+        int? pageSize,
         IGetInvoicesInputPort inputPort,
         GetInvoicesPresenter presenter)
     {
         var filter = new InvoiceFilterDto
         {
+            SearchTerm = searchTerm,
             InvoiceNumber = invoiceNumber,
-            CustomerName = customerName
+            CustomerName = customerName,
+            PageNumber = pageNumber ?? 1,
+            PageSize = pageSize ?? 10
         };
 
         await inputPort.Handle(filter);

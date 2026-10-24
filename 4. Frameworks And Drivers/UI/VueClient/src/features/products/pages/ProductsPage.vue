@@ -47,6 +47,9 @@ const maxPriceInput = ref<string>('');
 const orderBy = ref<'name' | 'price' | 'stock'>('name');
 const ascending = ref<boolean>(true);
 
+const currentPage = ref(1);
+const pageSize = 10;
+
 // Modal states
 const modalOpen = ref(false);
 const selectedProduct = ref<ProductDto | null>(null);
@@ -68,17 +71,23 @@ const filters = computed<ProductFilters>(() => {
       : undefined;
 
   return {
-    searchTerm: debouncedSearchTerm.value,
+    searchTerm: debouncedSearchTerm.value.trim() || undefined,
     stockFilter: stockFilter.value > 0 ? stockFilter.value : undefined,
     minPrice: parsedMinPrice,
     maxPrice: parsedMaxPrice,
     orderBy: orderBy.value,
     ascending: ascending.value,
+    pageNumber: currentPage.value,
+    pageSize,
   };
 });
 
+watch([searchTermInput, stockFilter, minPriceInput, maxPriceInput, orderBy, ascending], () => {
+  currentPage.value = 1;
+});
+
 const {
-  data: products,
+  data: pagedData,
   isLoading,
   isError,
   error,
@@ -86,20 +95,9 @@ const {
   isFetching,
 } = useProducts(filters);
 
-const productItems = computed(() => products.value ?? []);
-
-const currentPage = ref(1);
-const pageSize = 10;
-
-watch([searchTermInput, stockFilter, minPriceInput, maxPriceInput, orderBy, ascending], () => {
-  currentPage.value = 1;
-});
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return productItems.value.slice(start, start + pageSize);
-});
-
+const productItems = computed(() => pagedData.value?.items ?? []);
+const totalCount = computed(() => pagedData.value?.totalCount ?? 0);
+const totalPages = computed(() => pagedData.value?.totalPages ?? 1);
 
 const handleOpenCreate = () => {
   selectedProduct.value = null;
@@ -118,6 +116,7 @@ const handleResetFilters = () => {
   maxPriceInput.value = '';
   orderBy.value = 'name';
   ascending.value = true;
+  currentPage.value = 1;
 };
 
 const handleConfirmDelete = async () => {
@@ -129,16 +128,16 @@ const handleConfirmDelete = async () => {
   } catch (err: unknown) {
     deleteError.value = getErrorMessage(
       err,
-      'No se pudo eliminar el producto. Compruebe que no forme parte de órdenes registradas en el sistema.'
+      'No se pudo eliminar el producto. Verifique que no esté asociado a órdenes de compra existentes.'
     );
   }
 };
 
-const formatPrice = (price: number) => {
+const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-  }).format(price);
+  }).format(val);
 };
 
 const hasActiveFilters = computed(() => {
@@ -172,18 +171,86 @@ const hasActiveFilters = computed(() => {
       </Button>
     </div>
 
-    <!-- Filters Card -->
-    <Card class="border-slate-200 shadow-xs">
-      <CardContent class="p-4 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-          <!-- Búsqueda por Nombre -->
-          <div class="lg:col-span-4">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+    <!-- Segmentación Superior de Niveles de Stock -->
+    <div class="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-fit border border-slate-200">
+      <button
+        type="button"
+        @click="stockFilter = 0"
+        :class="
+          cn(
+            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
+            stockFilter === 0
+              ? 'bg-white text-sky-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          )
+        "
+      >
+        <Package class="h-3.5 w-3.5" />
+        <span>Todos los Productos</span>
+      </button>
+
+      <button
+        type="button"
+        @click="stockFilter = 1"
+        :class="
+          cn(
+            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
+            stockFilter === 1
+              ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          )
+        "
+      >
+        <CheckCircle2 class="h-3.5 w-3.5 text-emerald-600" />
+        <span>En Stock (&gt; 0)</span>
+      </button>
+
+      <button
+        type="button"
+        @click="stockFilter = 2"
+        :class="
+          cn(
+            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
+            stockFilter === 2
+              ? 'bg-white text-amber-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          )
+        "
+      >
+        <AlertCircle class="h-3.5 w-3.5 text-amber-500" />
+        <span>Stock Crítico (&le; 10)</span>
+      </button>
+
+      <button
+        type="button"
+        @click="stockFilter = 3"
+        :class="
+          cn(
+            'px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2',
+            stockFilter === 3
+              ? 'bg-white text-rose-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          )
+        "
+      >
+        <XCircle class="h-3.5 w-3.5 text-rose-500" />
+        <span>Agotados (0)</span>
+      </button>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <Card>
+      <CardContent class="pt-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <!-- Search Input -->
+          <div class="md:col-span-5">
+            <label for="search-products" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
               Búsqueda por Nombre
             </label>
             <div class="relative">
               <Search class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
+                id="search-products"
                 placeholder="Buscar por nombre de producto..."
                 v-model="searchTermInput"
                 class="pl-9"
@@ -191,103 +258,70 @@ const hasActiveFilters = computed(() => {
             </div>
           </div>
 
-          <!-- Filtro de Stock -->
-          <div class="lg:col-span-3">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Estado de Inventario
+          <!-- Rango de Precios -->
+          <div class="md:col-span-4">
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">
+              Rango de Precio Unitario ($)
             </label>
-            <select
-              v-model.number="stockFilter"
-              class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              <option :value="0">Todos los Estados</option>
-              <option :value="1">En Stock (> 0 uds.)</option>
-              <option :value="2">Stock Bajo (<= 10 uds.)</option>
-              <option :value="3">Agotado (0 uds.)</option>
-            </select>
-          </div>
-
-          <!-- Rango Precio Min - Max -->
-          <div class="lg:col-span-3 grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Precio Mín.
-              </label>
+            <div class="flex items-center gap-1">
               <Input
                 type="number"
-                placeholder="0.00"
+                placeholder="Mín"
                 v-model="minPriceInput"
+                class="h-10 text-xs px-2"
+                min="0"
+                step="0.5"
               />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Precio Máx.
-              </label>
+              <span class="text-slate-400 text-xs">-</span>
               <Input
                 type="number"
-                placeholder="100.00"
+                placeholder="Máx"
                 v-model="maxPriceInput"
+                class="h-10 text-xs px-2"
+                min="0"
+                step="0.5"
               />
             </div>
           </div>
 
-          <!-- Ordenación -->
-          <div class="lg:col-span-2 flex gap-1 items-center">
+          <!-- Ordenación y Botón Limpiar -->
+          <div class="md:col-span-3 flex gap-2 items-center">
             <div class="flex-1">
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+              <label for="filter-order" class="block text-xs font-semibold uppercase text-slate-500 mb-1">
                 Ordenar
               </label>
               <select
+                id="filter-order"
                 v-model="orderBy"
-                class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                class="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
               >
                 <option value="name">Nombre</option>
                 <option value="price">Precio</option>
-                <option value="stock">Stock</option>
+                <option value="stock">Existencias</option>
               </select>
             </div>
+
             <Button
               type="button"
               variant="outline"
               size="icon"
               @click="ascending = !ascending"
-              class="h-10 w-10 mt-5 shrink-0"
-              :title="ascending ? 'Ascendente (clic para descendente)' : 'Descendente (clic para ascendente)'"
+              :title="ascending ? 'Ascendente (A-Z, Menor a Mayor)' : 'Descendente (Z-A, Mayor a Menor)'"
+              class="h-10 w-10 shrink-0 self-end"
             >
-              <ArrowUpDown class="h-4 w-4 text-slate-600" />
+              <ArrowUpDown class="h-4 w-4" />
             </Button>
-          </div>
-        </div>
 
-        <!-- Botones de Acción de Filtros -->
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-          <span class="text-slate-500 font-medium">
-            Se encontraron <strong class="text-slate-800">{{ productItems.length }}</strong> producto(s)
-          </span>
-
-          <div class="flex items-center gap-2">
             <Button
               v-if="hasActiveFilters"
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
               @click="handleResetFilters"
-              class="h-8 text-xs text-slate-500 hover:text-slate-700"
+              title="Restablecer todos los filtros"
+              class="h-10 w-10 shrink-0 self-end text-slate-500 hover:text-slate-800"
             >
-              <RotateCcw class="h-3 w-3 mr-1" />
-              Restablecer Filtros
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="() => refetch()"
-              :disabled="isFetching"
-              class="h-8 text-xs text-slate-600"
-            >
-              <RefreshCw :class="cn('h-3 w-3 mr-1', isFetching && 'animate-spin')" />
-              Actualizar
+              <RotateCcw class="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -295,26 +329,49 @@ const hasActiveFilters = computed(() => {
     </Card>
 
     <!-- Tabla de Productos -->
-    <Card class="border-slate-200 shadow-xs overflow-hidden">
+    <Card>
+      <CardHeader class="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle class="text-base font-semibold text-slate-800">
+            Catálogo de Productos ({{ totalCount }} registros)
+          </CardTitle>
+          <CardDescription class="text-xs">
+            Inventario en tiempo real con control de existencias
+          </CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          @click="() => refetch()"
+          :disabled="isFetching"
+          class="h-8 text-xs"
+        >
+          <RefreshCw :class="cn('h-3.5 w-3.5 mr-1.5', isFetching && 'animate-spin')" />
+          Actualizar
+        </Button>
+      </CardHeader>
+
       <CardContent class="p-0">
         <div v-if="isLoading" class="p-12 text-center text-slate-500">
-          <RefreshCw class="h-8 w-8 mx-auto text-sky-600 animate-spin mb-3" />
-          <p class="font-medium text-sm">Cargando catálogo de productos...</p>
+          <RefreshCw class="h-6 w-6 animate-spin mx-auto text-sky-600 mb-2" />
+          <p class="text-sm">Cargando catálogo de productos...</p>
         </div>
 
-        <div v-else-if="isError" class="p-8 text-center text-rose-600 space-y-2">
-          <AlertCircle class="h-8 w-8 mx-auto text-rose-500" />
+        <div v-else-if="isError" class="p-12 text-center text-red-600">
+          <AlertCircle class="h-8 w-8 mx-auto text-red-500 mb-2" />
           <p class="font-semibold text-sm">Error al cargar productos</p>
-          <p class="text-xs text-slate-500">{{ getErrorMessage(error) }}</p>
-          <Button variant="outline" size="sm" @click="() => refetch()" class="mt-2">
+          <p class="text-xs text-slate-500 mt-1">{{ (error as any)?.message }}</p>
+          <Button variant="outline" size="sm" @click="() => refetch()" class="mt-4">
             Reintentar
           </Button>
         </div>
 
-        <div v-else-if="productItems.length === 0" class="p-12 text-center text-slate-400 space-y-3">
-          <Package class="h-10 w-10 mx-auto text-slate-300" />
-          <p class="font-medium text-sm text-slate-600">No se encontraron productos</p>
-          <p class="text-xs text-slate-400">Intente modificar los filtros de búsqueda o registre un nuevo producto.</p>
+        <div v-else-if="productItems.length === 0" class="p-12 text-center text-slate-400">
+          <Package class="h-8 w-8 mx-auto text-slate-300 mb-2" />
+          <p class="font-medium text-slate-600 text-sm">No se encontraron productos</p>
+          <p class="text-xs text-slate-400 mt-1">
+            Intente ajustar los filtros de búsqueda o registre un nuevo producto.
+          </p>
         </div>
 
         <Table v-else>
@@ -322,50 +379,52 @@ const hasActiveFilters = computed(() => {
             <TableRow>
               <TableHead class="w-20">ID</TableHead>
               <TableHead>Nombre del Producto</TableHead>
-              <TableHead class="text-right">Precio Unitario</TableHead>
-              <TableHead class="text-center">Existencias</TableHead>
+              <TableHead class="text-right w-36">Precio Unitario</TableHead>
+              <TableHead class="text-center w-36">Existencias</TableHead>
               <TableHead class="text-center w-36">Estado</TableHead>
               <TableHead class="text-right w-24">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="p in paginatedProducts" :key="p.id">
-              <TableCell class="font-mono text-xs font-bold text-slate-500">
+            <TableRow v-for="p in productItems" :key="p.id">
+              <TableCell class="font-mono font-bold text-xs text-slate-500">
                 #{{ p.id }}
               </TableCell>
               <TableCell class="font-medium text-slate-900">
                 {{ p.name }}
               </TableCell>
-              <TableCell class="text-right font-mono font-semibold text-slate-900">
-                {{ formatPrice(p.unitPrice) }}
+              <TableCell class="text-right font-mono font-semibold text-slate-800">
+                {{ formatCurrency(p.unitPrice) }}
               </TableCell>
-              <TableCell class="text-center font-mono font-medium text-slate-700">
-                {{ p.unitsInStock }} uds.
+              <TableCell class="text-center font-mono">
+                <span :class="p.unitsInStock === 0 ? 'text-rose-600 font-bold' : 'text-slate-700'">
+                  {{ p.unitsInStock }}
+                </span>
               </TableCell>
               <TableCell class="text-center">
                 <Badge
-                  v-if="p.unitsInStock <= 0"
+                  v-if="p.unitsInStock > 10"
+                  variant="success"
+                  class="inline-flex items-center gap-1"
+                >
+                  <CheckCircle2 class="w-3 h-3" />
+                  <span>Disponible</span>
+                </Badge>
+                <Badge
+                  v-else-if="p.unitsInStock > 0"
+                  variant="warning"
+                  class="inline-flex items-center gap-1"
+                >
+                  <AlertCircle class="w-3 h-3" />
+                  <span>Stock Crítico</span>
+                </Badge>
+                <Badge
+                  v-else
                   variant="danger"
                   class="inline-flex items-center gap-1"
                 >
                   <XCircle class="w-3 h-3" />
                   <span>Agotado</span>
-                </Badge>
-                <Badge
-                  v-else-if="p.unitsInStock <= 10"
-                  variant="warning"
-                  class="inline-flex items-center gap-1"
-                >
-                  <AlertCircle class="w-3 h-3" />
-                  <span>Stock Bajo</span>
-                </Badge>
-                <Badge
-                  v-else
-                  variant="success"
-                  class="inline-flex items-center gap-1"
-                >
-                  <CheckCircle2 class="w-3 h-3" />
-                  <span>En Stock</span>
                 </Badge>
               </TableCell>
               <TableCell class="text-right">
@@ -398,7 +457,15 @@ const hasActiveFilters = computed(() => {
             </TableRow>
           </TableBody>
         </Table>
-        <Pagination v-model:current-page="currentPage" :total-items="productItems.length" :page-size="pageSize" item-name="productos" />
+
+        <!-- Paginación de Servidor -->
+        <Pagination
+          v-model:current-page="currentPage"
+          :total-count="totalCount"
+          :total-pages="totalPages"
+          :page-size="pageSize"
+          item-name="productos"
+        />
       </CardContent>
     </Card>
 

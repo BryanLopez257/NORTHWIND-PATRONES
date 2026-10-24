@@ -19,7 +19,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.ToListAsync(queryable);
     }
 
-    public async Task<IEnumerable<ProductDto>> GetProducts(ProductFilterDto filter)
+    public async Task<PagedResultDto<ProductDto>> GetProducts(ProductFilterDto filter)
     {
         var query = context.Products.AsQueryable();
 
@@ -28,7 +28,8 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var term = filter.SearchTerm.Trim();
-                query = query.Where(p => p.Name.Contains(term));
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(p => p.Name.Contains(term) || (hasNumericId && p.Id == numericId));
             }
 
             if (filter.MinPrice.HasValue)
@@ -68,8 +69,17 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             query = query.OrderBy(p => p.Name);
         }
 
-        var projected = query.Select(p => new ProductDto(p.Id, p.Name, p.UnitsInStock, p.UnitPrice));
-        return await context.ToListAsync(projected);
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(p => new ProductDto(p.Id, p.Name, p.UnitsInStock, p.UnitPrice));
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<ProductDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<ProductDto> GetProductById(int id)
@@ -86,7 +96,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.AnyAsync(query);
     }
 
-    public async Task<IEnumerable<CustomerDto>> GetCustomers(CustomerFilterDto filter)
+    public async Task<PagedResultDto<CustomerDto>> GetCustomers(CustomerFilterDto filter)
     {
         var query = context.Customers.AsQueryable();
 
@@ -95,13 +105,48 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var term = filter.SearchTerm.Trim();
-                query = query.Where(c => c.Name.Contains(term) || c.Id.Contains(term));
+                var criteria = filter.Criteria?.ToLowerInvariant();
+
+                // Enfoque híbrido:
+                // - Identificadores estructurados (Id, Identification) => StartsWith (LIKE 'x%', SARGable / Index Seek).
+                // - Nombres descriptivos (BusinessName, TradeName, Name) => Contains (LIKE '%x%'), permite palabras intermedias.
+                query = criteria switch
+                {
+                    "identification" => query.Where(c => c.Identification.StartsWith(term)),
+                    "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.Contains(term)),
+                    "tradename" => query.Where(c => c.TradeName != null && c.TradeName.Contains(term)),
+                    "lastname" => query.Where(c => c.CustomerType == CustomerType.Natural && c.LastName != null && c.LastName.StartsWith(term)),
+                    // Name es la columna calculada persistida "Apellidos Nombres", permite buscar nombres compuestos ("Trujillo Pérez").
+                    "name" => query.Where(c => c.CustomerType == CustomerType.Natural && c.Name.Contains(term)),
+                    "id" => query.Where(c => c.Id.StartsWith(term)),
+                    _ => query.Where(c =>
+                        c.Id.StartsWith(term) ||
+                        c.Identification.StartsWith(term) ||
+                        c.Name.Contains(term) ||
+                        (c.BusinessName != null && c.BusinessName.Contains(term)) ||
+                        (c.TradeName != null && c.TradeName.Contains(term)))
+                };
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerType))
             {
-                var type = filter.CustomerType.Trim();
-                query = query.Where(c => c.CustomerType == type);
+                var typeStr = filter.CustomerType.Trim();
+                if (int.TryParse(typeStr, out int typeInt) && Enum.IsDefined(typeof(CustomerType), typeInt))
+                {
+                    query = query.Where(c => c.CustomerType == (CustomerType)typeInt);
+                }
+                else if (Enum.TryParse<CustomerType>(typeStr, true, out var parsedType))
+                {
+                    query = query.Where(c => c.CustomerType == parsedType);
+                }
+                else if (typeStr.Equals("Empresa", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.CustomerType == CustomerType.Legal);
+                }
+                else if (typeStr.Equals("Persona", StringComparison.OrdinalIgnoreCase) || typeStr.Equals("Natural", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.CustomerType == CustomerType.Natural);
+                }
             }
 
             if (filter.BalanceFilter.HasValue)
@@ -141,15 +186,46 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             query = query.OrderBy(c => c.Name);
         }
 
-        var projected = query.Select(c => new CustomerDto(c.Id, c.Name, c.CurrentBalance, c.CustomerType));
-        return await context.ToListAsync(projected);
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(c => new CustomerDto(
+            c.Id,
+            c.Name,
+            c.CurrentBalance,
+            c.CustomerType,
+            c.Identification,
+            c.FirstName,
+            c.SecondName,
+            c.LastName,
+            c.SecondLastName,
+            c.BusinessName,
+            c.TradeName));
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<CustomerDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<CustomerDto> GetCustomerById(string id)
     {
         var query = context.Customers
             .Where(c => c.Id == id)
-            .Select(c => new CustomerDto(c.Id, c.Name, c.CurrentBalance, c.CustomerType));
+            .Select(c => new CustomerDto(
+                c.Id,
+                c.Name,
+                c.CurrentBalance,
+                c.CustomerType,
+                c.Identification,
+                c.FirstName,
+                c.SecondName,
+                c.LastName,
+                c.SecondLastName,
+                c.BusinessName,
+                c.TradeName));
         return await context.FirstOrDefaultAsync(query);
     }
 
@@ -196,28 +272,56 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
         return await context.FirstOrDefaultAsync(query);
     }
 
-    public async Task<IEnumerable<InvoiceResponseDto>> GetInvoices(InvoiceFilterDto filter)
+    public async Task<PagedResultDto<InvoiceResponseDto>> GetInvoices(InvoiceFilterDto filter)
     {
         var query = context.Invoices.AsQueryable();
 
         if (filter != null)
         {
+            // Búsqueda global ('all'): códigos con StartsWith, nombre del cliente con Contains.
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                var term = filter.SearchTerm.Trim();
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(i =>
+                    i.InvoiceNumber.StartsWith(term) ||
+                    (hasNumericId && i.Id == numericId) ||
+                    i.CustomerId.StartsWith(term) ||
+                    (i.CustomerDocumentSnapshot != null && i.CustomerDocumentSnapshot.StartsWith(term)) ||
+                    (i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term)));
+            }
+
             if (!string.IsNullOrWhiteSpace(filter.InvoiceNumber))
             {
                 var term = filter.InvoiceNumber.Trim();
-                query = query.Where(i => i.InvoiceNumber.Contains(term));
+                // N° de factura: StartsWith => LIKE @term + '%' (Index Seek sobre IX_Invoices_InvoiceNumber).
+                // Si se ingresa sólo el correlativo numérico (ej. "23"), se resuelve por Id (PK) en lugar de LIKE '%x%'.
+                var hasNumericId = int.TryParse(term, out int numericId);
+                query = query.Where(i => i.InvoiceNumber.StartsWith(term) || (hasNumericId && i.Id == numericId));
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerName))
             {
                 var term = filter.CustomerName.Trim();
-                query = query.Where(i => i.CustomerFullNameSnapshot.Contains(term) || i.CustomerId.Contains(term));
+                // Cliente: CustomerId / documento por prefijo (identificadores), nombre por contención (lenguaje natural).
+                query = query.Where(i =>
+                    i.CustomerId.StartsWith(term) ||
+                    (i.CustomerDocumentSnapshot != null && i.CustomerDocumentSnapshot.StartsWith(term)) ||
+                    (i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term)));
             }
         }
 
         query = query.OrderByDescending(i => i.CreatedDate);
 
-        var projected = query.Select(i => new InvoiceResponseDto
+        var totalCount = await context.CountAsync(query);
+        var pageNumber = filter?.PageNumber > 0 ? filter.PageNumber : 1;
+        var pageSize = filter?.PageSize > 0 ? filter.PageSize : 10;
+
+        var pagedQuery = query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+        var projected = pagedQuery.Select(i => new InvoiceResponseDto
         {
             Id = i.Id,
             InvoiceNumber = i.InvoiceNumber,
@@ -241,7 +345,8 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
             }).ToList()
         });
 
-        return await context.ToListAsync(projected);
+        var items = (await context.ToListAsync(projected)).ToList();
+        return new PagedResultDto<InvoiceResponseDto>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<int> GetLastInvoiceId()

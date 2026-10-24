@@ -15,7 +15,7 @@ import {
   User,
 } from 'lucide-vue-next';
 import { useInvoices } from '../composables/useInvoices';
-import type { InvoiceResponseDto } from '../types';
+import type { InvoiceResponseDto, InvoiceFilters } from '../types';
 import InvoiceVoucher from '../components/InvoiceVoucher.vue';
 import { useDebounce } from '@/shared/utils/useDebounce';
 import {
@@ -30,6 +30,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  Pagination,
 } from '@/shared/ui';
 
 const invoiceNumberQuery = ref('');
@@ -38,44 +39,31 @@ const customerNameQuery = ref('');
 const debouncedInvoiceNumber = useDebounce(invoiceNumberQuery, 350);
 const debouncedCustomerName = useDebounce(customerNameQuery, 350);
 
-const filters = computed(() => ({
-  invoiceNumber: debouncedInvoiceNumber.value,
-  customerName: debouncedCustomerName.value,
+const currentPage = ref(1);
+const pageSize = 10;
+
+const filters = computed<InvoiceFilters>(() => ({
+  invoiceNumber: debouncedInvoiceNumber.value.trim() || undefined,
+  customerName: debouncedCustomerName.value.trim() || undefined,
+  pageNumber: currentPage.value,
+  pageSize,
 }));
 
+watch([debouncedInvoiceNumber, debouncedCustomerName], () => {
+  currentPage.value = 1;
+});
+
 const {
-  data: invoices,
+  data: pagedData,
   isLoading,
   isFetching,
   error,
   refetch,
 } = useInvoices(filters);
 
-const invoiceItems = computed(() => invoices.value ?? []);
-
-
-const currentPage = ref(1);
-const pageSize = 10;
-
-watch([invoiceNumberQuery, customerNameQuery], () => {
-  currentPage.value = 1;
-});
-
-const paginatedInvoices = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return filteredInvoices.value.slice(start, start + pageSize);
-});
-
-const filteredInvoices = computed(() => {
-  const list = invoiceItems.value;
-  if (!customerNameQuery.value.trim()) return list;
-  const term = customerNameQuery.value.trim().toLowerCase();
-  return list.filter(
-    (inv) =>
-      (inv.customerFullName && inv.customerFullName.toLowerCase().includes(term)) ||
-      (inv.customerId && inv.customerId.toLowerCase().includes(term))
-  );
-});
+const invoiceList = computed(() => pagedData.value?.items ?? []);
+const totalCount = computed(() => pagedData.value?.totalCount ?? 0);
+const totalPages = computed(() => pagedData.value?.totalPages ?? 1);
 
 const selectedInvoice = ref<InvoiceResponseDto | null>(null);
 const isVoucherModalOpen = ref(false);
@@ -217,91 +205,103 @@ const hasActiveFilters = computed(
           </Button>
         </div>
 
-        <div v-else-if="filteredInvoices.length === 0" class="p-12 text-center text-slate-400 space-y-3">
+        <div v-else-if="invoiceList.length === 0" class="p-12 text-center text-slate-400 space-y-3">
           <Receipt class="h-10 w-10 mx-auto text-slate-300" />
           <p class="font-medium text-sm text-slate-600">No se encontraron facturas</p>
           <p class="text-xs text-slate-400">Genere nuevas órdenes de venta para poblar el registro histórico.</p>
         </div>
 
-        <Table v-else>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="w-32">Comprobante</TableHead>
-              <TableHead class="w-44 whitespace-nowrap">Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead class="w-36">Identificación</TableHead>
-              <TableHead class="w-48 whitespace-nowrap">Vendedor</TableHead>
-              <TableHead class="text-right w-24">Subtotal</TableHead>
-              <TableHead class="text-right w-20">IVA (15%)</TableHead>
-              <TableHead class="text-right w-24">Total</TableHead>
-              <TableHead class="text-center w-28">Acción</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="inv in paginatedInvoices" :key="inv.id">
-              <TableCell class="font-mono text-xs font-bold text-sky-700">
-                {{ inv.invoiceNumber || `FAC-${inv.id}` }}
-              </TableCell>
-              <TableCell class="text-xs text-slate-600 whitespace-nowrap">
-                <div class="flex items-center space-x-1.5">
-                  <Calendar class="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span class="font-mono text-xs font-medium">{{ formatDate(inv.createdDate) }}</span>
-                </div>
-              </TableCell>
-              <TableCell class="font-medium text-slate-800">
-                <div class="flex items-center space-x-1.5">
-                  <Building2 class="h-4 w-4 text-slate-400 shrink-0" />
-                  <span class="truncate max-w-[240px]" :title="inv.customerFullName || inv.customerId">
-                    {{ inv.customerFullName || inv.customerId }}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div class="flex flex-col space-y-0.5">
-                  <span class="font-mono text-xs text-slate-700 font-medium">
-                    {{ inv.customerDocument || 'S/D' }}
-                  </span>
-                  <span
-                    v-if="inv.customerId"
-                    class="font-mono text-[11px] text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded w-fit"
+        <div v-else>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead class="w-32">Comprobante</TableHead>
+                <TableHead class="w-44 whitespace-nowrap">Fecha</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead class="w-36">Identificación</TableHead>
+                <TableHead class="w-48 whitespace-nowrap">Vendedor</TableHead>
+                <TableHead class="text-right w-24">Subtotal</TableHead>
+                <TableHead class="text-right w-20">IVA (15%)</TableHead>
+                <TableHead class="text-right w-24">Total</TableHead>
+                <TableHead class="text-center w-28">Acción</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="inv in invoiceList" :key="inv.id">
+                <TableCell class="font-mono text-xs font-bold text-sky-700">
+                  {{ inv.invoiceNumber || `FAC-${inv.id}` }}
+                </TableCell>
+                <TableCell class="text-xs text-slate-600 whitespace-nowrap">
+                  <div class="flex items-center space-x-1.5">
+                    <Calendar class="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span class="font-mono text-xs font-medium">{{ formatDate(inv.createdDate) }}</span>
+                  </div>
+                </TableCell>
+                <TableCell class="font-medium text-slate-800">
+                  <div class="flex items-center space-x-1.5">
+                    <Building2 class="h-4 w-4 text-slate-400 shrink-0" />
+                    <span class="truncate max-w-[240px]" :title="inv.customerFullName || inv.customerId">
+                      {{ inv.customerFullName || inv.customerId }}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div class="flex flex-col space-y-0.5">
+                    <span class="font-mono text-xs text-slate-700 font-medium">
+                      {{ inv.customerDocument || 'S/D' }}
+                    </span>
+                    <span
+                      v-if="inv.customerId"
+                      class="font-mono text-[11px] text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded w-fit"
+                    >
+                      ID: {{ inv.customerId }}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell class="whitespace-nowrap">
+                  <div class="flex items-center space-x-1.5 text-xs text-slate-700">
+                    <User class="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span class="truncate max-w-[220px]" :title="inv.sellerName || 'Ventas NW'">{{ inv.sellerName || 'Ventas NW' }}</span>
+                  </div>
+                </TableCell>
+                <TableCell class="text-right font-mono text-xs text-slate-700">
+                  {{ formatCurrency(inv.subTotal) }}
+                </TableCell>
+                <TableCell class="text-right font-mono text-xs text-slate-700">
+                  {{ formatCurrency(inv.tax) }}
+                </TableCell>
+                <TableCell class="text-right font-mono text-sm font-bold text-emerald-700">
+                  {{ formatCurrency(inv.total) }}
+                </TableCell>
+                <TableCell class="text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="handleOpenVoucher(inv)"
+                    class="h-8 px-2.5 text-xs text-sky-700 border-sky-200 hover:bg-sky-50 flex items-center space-x-1.5 mx-auto"
+                    title="Ver comprobante e imprimir"
                   >
-                    ID: {{ inv.customerId }}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell class="whitespace-nowrap">
-                <div class="flex items-center space-x-1.5 text-xs text-slate-700">
-                  <User class="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span class="truncate max-w-[220px]" :title="inv.sellerName || 'Ventas NW'">{{ inv.sellerName || 'Ventas NW' }}</span>
-                </div>
-              </TableCell>
-              <TableCell class="text-right font-mono text-xs text-slate-700">
-                {{ formatCurrency(inv.subTotal) }}
-              </TableCell>
-              <TableCell class="text-right font-mono text-xs text-slate-700">
-                {{ formatCurrency(inv.tax) }}
-              </TableCell>
-              <TableCell class="text-right font-mono text-sm font-bold text-emerald-700">
-                {{ formatCurrency(inv.total) }}
-              </TableCell>
-              <TableCell class="text-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  @click="handleOpenVoucher(inv)"
-                  class="h-8 px-2.5 text-xs text-sky-700 border-sky-200 hover:bg-sky-50 flex items-center space-x-1.5 mx-auto"
-                  title="Ver comprobante e imprimir"
-                >
-                  <Eye class="h-3.5 w-3.5" />
-                  <span>Ver</span>
-                  <Printer class="h-3.5 w-3.5 ml-0.5 text-slate-400" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <Pagination v-model:current-page="currentPage" :total-items="filteredInvoices.length" :page-size="pageSize" item-name="facturas" />
+                    <Eye class="h-3.5 w-3.5" />
+                    <span>Ver</span>
+                    <Printer class="h-3.5 w-3.5 ml-0.5 text-slate-400" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <!-- Server Pagination -->
+          <div class="border-t border-slate-200 p-3">
+            <Pagination
+              v-model:current-page="currentPage"
+              :total-count="totalCount"
+              :total-pages="totalPages"
+              :page-size="pageSize"
+              item-name="facturas"
+            />
+          </div>
+        </div>
       </CardContent>
     </Card>
 

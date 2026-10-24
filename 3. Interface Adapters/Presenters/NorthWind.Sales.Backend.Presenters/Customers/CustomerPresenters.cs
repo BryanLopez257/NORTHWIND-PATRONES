@@ -2,9 +2,9 @@ namespace NorthWind.Sales.Backend.Presenters.Customers;
 
 public class GetCustomersPresenter : IGetCustomersOutputPort
 {
-    public IEnumerable<CustomerDto> Customers { get; private set; }
+    public PagedResultDto<CustomerDto> Customers { get; private set; }
 
-    public Task Handle(IEnumerable<CustomerDto> customers)
+    public Task Handle(PagedResultDto<CustomerDto> customers)
     {
         Customers = customers;
         return Task.CompletedTask;

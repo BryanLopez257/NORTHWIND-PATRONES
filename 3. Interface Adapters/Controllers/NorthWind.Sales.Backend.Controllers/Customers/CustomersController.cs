@@ -31,6 +31,9 @@ public static class CustomersController
         decimal? maxBalance,
         string? orderBy,
         bool? ascending,
+        string? criteria,
+        int? pageNumber,
+        int? pageSize,
         IGetCustomersInputPort inputPort,
         GetCustomersPresenter presenter)
     {
@@ -42,7 +45,10 @@ public static class CustomersController
             MinBalance = minBalance,
             MaxBalance = maxBalance,
             OrderBy = orderBy ?? "name",
-            Ascending = ascending ?? true
+            Ascending = ascending ?? true,
+            Criteria = criteria,
+            PageNumber = pageNumber ?? 1,
+            PageSize = pageSize ?? 10
         };
 
         await inputPort.Handle(filter);

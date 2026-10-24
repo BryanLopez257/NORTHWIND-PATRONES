@@ -171,14 +171,31 @@ internal class CommandsRepository(
         var entity = new Entities.Customer
         {
             Id = customer.Id,
-            Name = customer.Name,
             CurrentBalance = customer.CurrentBalance,
-            CustomerType = string.IsNullOrWhiteSpace(customer.CustomerType) ? "Empresa" : customer.CustomerType
+            CustomerType = customer.CustomerType,
+            Identification = customer.Identification,
+            FirstName = customer.FirstName,
+            SecondName = customer.SecondName,
+            LastName = customer.LastName,
+            SecondLastName = customer.SecondLastName,
+            BusinessName = customer.BusinessName,
+            TradeName = customer.TradeName
         };
 
         await context.AddCustomerAsync(entity);
         await context.SaveChangesAsync();
-        return new CustomerDto(entity.Id, entity.Name, entity.CurrentBalance, entity.CustomerType);
+        return new CustomerDto(
+            entity.Id,
+            entity.Name,
+            entity.CurrentBalance,
+            entity.CustomerType,
+            entity.Identification,
+            entity.FirstName,
+            entity.SecondName,
+            entity.LastName,
+            entity.SecondLastName,
+            entity.BusinessName,
+            entity.TradeName);
     }
 
     public async Task<CustomerDto> UpdateCustomer(UpdateCustomerDto customer)
@@ -186,16 +203,32 @@ internal class CommandsRepository(
         var entity = await context.FindCustomerAsync(customer.Id);
         if (entity != null)
         {
-            entity.Name = customer.Name;
             entity.CurrentBalance = customer.CurrentBalance;
-            if (!string.IsNullOrWhiteSpace(customer.CustomerType))
-            {
-                entity.CustomerType = customer.CustomerType;
-            }
+            entity.CustomerType = customer.CustomerType;
+            entity.Identification = customer.Identification;
+            entity.FirstName = customer.FirstName;
+            entity.SecondName = customer.SecondName;
+            entity.LastName = customer.LastName;
+            entity.SecondLastName = customer.SecondLastName;
+            entity.BusinessName = customer.BusinessName;
+            entity.TradeName = customer.TradeName;
+
             context.UpdateCustomer(entity);
             await context.SaveChangesAsync();
         }
-        return new CustomerDto(customer.Id, customer.Name, customer.CurrentBalance, entity?.CustomerType ?? customer.CustomerType);
+
+        return new CustomerDto(
+            customer.Id,
+            entity?.Name ?? customer.Name,
+            customer.CurrentBalance,
+            customer.CustomerType,
+            customer.Identification,
+            customer.FirstName,
+            customer.SecondName,
+            customer.LastName,
+            customer.SecondLastName,
+            customer.BusinessName,
+            customer.TradeName);
     }
 
     public async Task DeleteCustomer(string id)
@@ -260,7 +293,7 @@ internal class CommandsRepository(
             CustomerFullNameSnapshot = customer?.Name ?? invoiceDto.CustomerId,
             CustomerAddressSnapshot = invoiceDto.CustomerAddress ?? string.Empty,
             CustomerPhoneSnapshot = invoiceDto.CustomerPhone ?? string.Empty,
-            CustomerEmailSnapshot = invoiceDto.CustomerEmail ?? string.Empty,
+            CustomerEmailSnapshot = invoiceDto.CustomerEmail?.Trim().ToLowerInvariant() ?? string.Empty,
             SellerFullNameSnapshot = sellerName,
             SubTotal = subTotal,
             Tax = tax,

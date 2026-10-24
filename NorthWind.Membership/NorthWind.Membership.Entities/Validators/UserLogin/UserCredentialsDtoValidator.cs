@@ -6,6 +6,7 @@ internal class UserCredentialsDtoValidator : AbstractModelValidator<UserCredenti
     {
         AddRuleFor(u => u.Email)
             .NotEmpty(UserLoginMessages.RequiredEmailErrorMessage)
+            .MaximumLength(254, UserLoginMessages.EmailTooLongErrorMessage)
             .EmailAddress(UserLoginMessages.InvalidEmailErrorMessage);
         AddRuleFor(u => u.Password)
             .NotEmpty(UserLoginMessages.RequiredPasswordErrorMessage);

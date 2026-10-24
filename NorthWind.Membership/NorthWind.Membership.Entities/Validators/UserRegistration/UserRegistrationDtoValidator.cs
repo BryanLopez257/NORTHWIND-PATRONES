@@ -8,9 +8,9 @@ internal class UserRegistrationDtoValidator : AbstractModelValidator<UserRegistr
         @"^[\p{L}\s]+$",
         RegexOptions.Compiled);
 
-    // Solo permite letras a-z/A-Z, dígitos 0-9, puntos (.) y arroba (@)
+    // Permite caracteres alfanuméricos, puntos (.), arroba (@), subdireccionamiento (+), guiones (-) y subguiones (_) conforme a RFC 5321/3696
     private static readonly Regex EmailCharsRegex = new(
-        @"^[a-zA-Z0-9.@]+$",
+        @"^[a-zA-Z0-9.@+_\-]+$",
         RegexOptions.Compiled);
 
     public UserRegistrationDtoValidator(IValidationService<UserRegistrationDto> validator) : base(validator)
@@ -48,7 +48,7 @@ internal class UserRegistrationDtoValidator : AbstractModelValidator<UserRegistr
         AddRuleFor(u => u.Email)
             .StopOnFirstFailure()
             .NotEmpty(UserRegistrationMessages.RequiredEmailErrorMessage)
-            .MaximumLength(100, UserRegistrationMessages.EmailTooLongErrorMessage)
+            .MaximumLength(254, UserRegistrationMessages.EmailTooLongErrorMessage)
             .Must(email => !string.IsNullOrWhiteSpace(email)
                         && !email.Any(char.IsWhiteSpace)
                         && !ContainsEmoji(email)

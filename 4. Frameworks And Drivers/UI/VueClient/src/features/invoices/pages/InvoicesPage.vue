@@ -309,6 +309,7 @@ const hasActiveFilters = computed(
     <Dialog
       :open="isVoucherModalOpen"
       @update:open="isVoucherModalOpen = $event"
+      :show-close-button="false"
       title="Comprobante de Factura Electrónica"
       description="Vista oficial y opción de impresión limpia del comprobante emitido."
       class="max-w-4xl"

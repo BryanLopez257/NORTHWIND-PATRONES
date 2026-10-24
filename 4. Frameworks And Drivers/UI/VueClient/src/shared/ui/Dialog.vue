@@ -9,6 +9,7 @@ interface Props {
   title?: string;
   description?: string;
   class?: string;
+  showCloseButton?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   title: '',
   description: '',
   class: '',
+  showCloseButton: true,
 });
 
 const emit = defineEmits<{
@@ -95,6 +97,7 @@ const handleClose = () => {
             </p>
           </div>
           <Button
+            v-if="showCloseButton"
             variant="ghost"
             size="icon"
             @click="handleClose"

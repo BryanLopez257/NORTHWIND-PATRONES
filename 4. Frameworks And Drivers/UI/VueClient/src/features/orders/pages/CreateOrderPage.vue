@@ -965,6 +965,7 @@ const onSubmit = async () => {
     <Dialog
       :open="voucherModalOpen"
       @update:open="voucherModalOpen = $event"
+      :show-close-button="false"
       title="Factura Emitida con Éxito"
       description="Se ha registrado la orden de venta y generado el comprobante electrónico correspondiente."
       class="max-w-4xl"

@@ -11,8 +11,8 @@ namespace NorthWind.Sales.Backend.DataContexts.EFCore.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Normalizar datos existentes antes de alterar la columna CustomerType de string a int
-            migrationBuilder.Sql("UPDATE [Customers] SET [CustomerType] = '2' WHERE [CustomerType] = 'Empresa' OR [CustomerType] IS NULL;");
-            migrationBuilder.Sql("UPDATE [Customers] SET [CustomerType] = '1' WHERE [CustomerType] = 'Persona' OR [CustomerType] = 'Natural';");
+            migrationBuilder.Sql("UPDATE [Customers] SET [CustomerType] = '1' WHERE [CustomerType] LIKE '%Persona%' OR [CustomerType] LIKE '%Natural%' OR [CustomerType] = '1';");
+            migrationBuilder.Sql("UPDATE [Customers] SET [CustomerType] = '2' WHERE [CustomerType] <> '1' OR [CustomerType] IS NULL;");
             migrationBuilder.AlterColumn<int>(
                 name: "CustomerType",
                 table: "Customers",

@@ -28,7 +28,7 @@ const registrationSuccess = computed(() => {
 });
 
 const handleEmailPaste = (event: ClipboardEvent) => {
-  handlePasteFilter(event, (text) => sanitizeEmail(text, 100));
+  handlePasteFilter(event, (text) => sanitizeEmail(text, 254));
 };
 
 const validateField = (field: keyof LoginFormData) => {
@@ -115,7 +115,7 @@ const onSubmit = async () => {
               type="text"
               auto-complete="email"
               placeholder="ejemplo@northwind.com"
-              :max-length="100"
+              :max-length="254"
               :error="errors.email"
               v-model="formData.email"
               @keydown="allowEmailChars"

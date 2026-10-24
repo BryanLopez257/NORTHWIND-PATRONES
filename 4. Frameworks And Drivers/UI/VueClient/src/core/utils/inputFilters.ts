@@ -113,21 +113,21 @@ export const sanitizeAddress = (value: string, maxLength: number = 60): string =
 };
 
 // ============================================================================
-// 6. emailChars: Letras, dígitos, punto (.) y arroba (@). Sin espacios ni signos
+// 6. emailChars: Letras, dígitos, punto (.), más (+), guion (-), guion bajo (_) y arroba (@). Sin espacios ni signos
 // ============================================================================
 export const allowEmailChars = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[a-zA-Z0-9.@]$/.test(e.key)) {
+  if (!/^[a-zA-Z0-9.@+\-_]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
-export const sanitizeEmail = (value: string, maxLength: number = 100): string => {
+export const sanitizeEmail = (value: string, maxLength: number = 254): string => {
   if (!value) return '';
   return value
     .replace(/\s+/g, '')
     .replace(EMOJI_GLOBAL_REGEX, '')
-    .replace(/[^a-zA-Z0-9.@]/g, '')
+    .replace(/[^a-zA-Z0-9.@+\-_]/g, '')
     .slice(0, maxLength);
 };
 

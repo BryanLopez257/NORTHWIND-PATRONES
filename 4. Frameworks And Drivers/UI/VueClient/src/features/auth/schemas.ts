@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const NAME_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-const EMAIL_STRICT_REGEX = /^[a-zA-Z0-9.@]+$/;
+const EMAIL_STRICT_REGEX = /^[a-zA-Z0-9.@+\-_]+$/;
 const HAS_NO_EMOJI = (val: string) => !/[\uD800-\uDFFF]/.test(val);
 
 export const loginSchema = z.object({
@@ -76,11 +76,11 @@ export const registerSchema = z
       .string()
       .trim()
       .min(1, 'El correo es requerido.')
-      .max(100, 'El correo no debe superar los 100 caracteres.')
+      .max(254, 'El correo no debe superar los 254 caracteres.')
       .email('El formato de correo no es válido.')
       .refine(
         (val) => EMAIL_STRICT_REGEX.test(val) && HAS_NO_EMOJI(val) && !/\s/.test(val),
-        'El correo solo puede contener letras, números, punto (.) y arroba (@). No se permiten otros caracteres especiales, espacios ni emojis.'
+        'El correo solo puede contener letras, números, punto (.), más (+), guion (-) y guion bajo (_).'
       ),
     password: z
       .string()

@@ -485,3 +485,11 @@ $RECYCLE.BIN/
 **/node_modules/
 **/dist/
 **/.vite/
+
+# Flutter / Dart
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.web_plugins/

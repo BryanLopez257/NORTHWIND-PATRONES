@@ -1,0 +1,27 @@
+# Archivos de Flutter y Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Web generados
+.web_plugins/
+
+# Configuración de Android
+android/.gradle/
+android/local.properties
+android/app/过度_*.jks
+android/app/*.keystore
+android/app/*.jks
+
+# Configuración de iOS/macOS
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Flutter/GeneratedPluginRegistrant.gen.birds
+.DS_Store
+
+# Editores de código (Android Studio y VS Code)
+.idea/
+*.iml
+.vscode/

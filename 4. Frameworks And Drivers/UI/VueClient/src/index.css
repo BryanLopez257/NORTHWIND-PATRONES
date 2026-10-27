@@ -37,7 +37,13 @@ html.dark aside {
   border-color: #27272a !important;
 }
 
-html.dark .bg-white {
+html.dark .bg-white,
+html.dark .bg-white\/95 {
+  background-color: #18181b !important;
+}
+
+html.dark .bg-gradient-to-br {
+  background-image: linear-gradient(to bottom right, #09090b, #18181b, #09090b) !important;
   background-color: #18181b !important;
 }
 

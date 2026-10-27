@@ -7,7 +7,7 @@
  * Paridad 1:1 con la versión React:
  * 1. Selección interactiva de cliente con validación reactiva de saldo deudor.
  *    Sincronización automática de Cédula/RUC desde la ficha del cliente (ReadOnly).
- * 2. Contadores en vivo para Dirección (X/60), Ciudad (X/15), País (X/15) y Código Postal (X/10).
+ * 2. Contadores en vivo para Dirección (X/60), Ciudad (X/15), País (X/15) y Código Postal (X/6).
  * 3. Líneas de productos con botones +/- y entrada manual por teclado.
  *    Alerta reactiva "Excede stock disponible" y bloqueo de envío.
  *    Botón para CAMBIAR DE PRODUCTO en cada línea del pedido.
@@ -312,7 +312,7 @@ const handleCountryPaste = (e: ClipboardEvent) => {
 };
 
 const handlePostalPaste = (e: ClipboardEvent) => {
-  handlePasteFilter(e, (text) => sanitizeDigits(text).slice(0, 10));
+  handlePasteFilter(e, (text) => sanitizeDigits(text).slice(0, 6));
 };
 
 // Manejadores de Carrito de Compras
@@ -540,7 +540,7 @@ const onSubmit = async () => {
                   class="shrink-0"
                 >
                   <Users class="h-4 w-4 mr-1 text-sky-600" />
-                  <span>Buscar Cliente</span>
+                  <span>Agregar Cliente</span>
                 </Button>
               </div>
 
@@ -664,15 +664,15 @@ const onSubmit = async () => {
                   id="ship-postal"
                   label="Código Postal"
                   placeholder="170150"
-                  :max-length="10"
+                  :max-length="6"
                   class="font-mono"
                   :model-value="shipPostalCode"
-                  @update:model-value="shipPostalCode = sanitizeDigits($event).slice(0, 10)"
+                  @update:model-value="shipPostalCode = sanitizeDigits($event).slice(0, 6)"
                   @keydown="allowOnlyDigits"
                   @paste="handlePostalPaste"
                 />
                 <span class="text-[11px] text-slate-400 mt-1 block">
-                  {{ shipPostalCode.length }}/10
+                  {{ shipPostalCode.length }}/6
                 </span>
               </div>
             </div>
@@ -692,9 +692,12 @@ const onSubmit = async () => {
           <Button
             type="button"
             size="sm"
+            :disabled="!selectedCustomer"
             @click="
-              itemToReplace = null;
-              isCatalogOpen = true;
+              if (selectedCustomer) {
+                itemToReplace = null;
+                isCatalogOpen = true;
+              }
             "
             class="bg-sky-600 hover:bg-sky-700 text-white"
           >
@@ -984,3 +987,4 @@ const onSubmit = async () => {
     </Dialog>
   </div>
 </template>
+

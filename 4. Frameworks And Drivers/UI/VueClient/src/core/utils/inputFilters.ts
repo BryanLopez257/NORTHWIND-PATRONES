@@ -168,7 +168,7 @@ export const sanitizeAlphaUpper = (value: string, maxLength?: number): string =>
   return maxLength ? clean.slice(0, maxLength) : clean;
 };
 
-export const sanitizePostalCode = (value: string, maxLength: number = 10): string => {
+export const sanitizePostalCode = (value: string, maxLength: number = 6): string => {
   if (!value) return '';
   return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, maxLength);
 };
@@ -249,3 +249,4 @@ export const handlePasteFilter = (
     }
   }
 };
+

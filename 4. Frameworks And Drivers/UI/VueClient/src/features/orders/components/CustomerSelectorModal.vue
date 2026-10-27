@@ -46,7 +46,7 @@ const emit = defineEmits<{
 
 const searchTerm = ref('');
 const debouncedSearchTerm = useDebounce(searchTerm, 350);
-const searchCriteria = ref<'all' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename' | 'id'>('all');
+const searchCriteria = ref<'all' | 'identification' | 'firstname' | 'lastname' | 'businessname' | 'tradename' | 'id'>('all');
 const typeFilter = ref<'Todos' | 'Persona Natural' | 'Empresa'>('Todos');
 const onlyWithoutDebt = ref(false);
 const blockedWarning = ref<string | null>(null);
@@ -54,17 +54,39 @@ const blockedWarning = ref<string | null>(null);
 const currentPage = ref(1);
 const pageSize = 10;
 
+const isEmpresa = (type: string | number | undefined | null): boolean => {
+  return type === 2 || type === '2' || type === 'Empresa' || type === 'Legal';
+};
+
+const isPersonaNatural = (type: string | number | undefined | null): boolean => {
+  return type === 1 || type === '1' || type === 'Persona Natural' || type === 'Natural' || type === 'Persona';
+};
+
+const matchesCustomerType = (
+  type: string | number | undefined | null,
+  filter: 'Todos' | 'Persona Natural' | 'Empresa'
+): boolean => {
+  if (filter === 'Todos') return true;
+  if (filter === 'Empresa') return isEmpresa(type);
+  if (filter === 'Persona Natural') return isPersonaNatural(type);
+  return true;
+};
+
 const serverFilters = computed<CustomerFilters>(() => {
   return {
     searchTerm: debouncedSearchTerm.value.trim() || undefined,
     criteria: searchCriteria.value !== 'all' ? searchCriteria.value : undefined,
-    customerType: typeFilter.value !== 'Todos' ? typeFilter.value : undefined,
+    customerType:
+      typeFilter.value !== 'Todos'
+        ? (typeFilter.value === 'Persona Natural' ? 'Natural' : 'Empresa')
+        : undefined,
+    balanceFilter: onlyWithoutDebt.value ? 1 : undefined,
     pageNumber: currentPage.value,
     pageSize,
   };
 });
 
-watch([debouncedSearchTerm, searchCriteria, typeFilter], () => {
+watch([debouncedSearchTerm, searchCriteria, typeFilter, onlyWithoutDebt], () => {
   currentPage.value = 1;
 });
 
@@ -79,40 +101,8 @@ const filteredCustomers = computed(() => {
       return false;
     }
 
-    if (typeFilter.value !== 'Todos' && customer.customerType !== typeFilter.value) {
+    if (!matchesCustomerType(customer.customerType, typeFilter.value)) {
       return false;
-    }
-
-    if (searchTerm.value.trim()) {
-      const term = searchTerm.value.trim().toLowerCase();
-      const id = (customer.id ?? '').toLowerCase();
-      const identification = (customer.identification ?? '').toLowerCase();
-      const businessName = (customer.businessName ?? '').toLowerCase();
-      const tradeName = (customer.tradeName ?? '').toLowerCase();
-      const name = (customer.name ?? '').toLowerCase();
-
-      switch (searchCriteria.value) {
-        case 'id':
-          return id.startsWith(term);
-        case 'identification':
-          return identification.startsWith(term);
-        case 'businessname':
-          return businessName.includes(term);
-        case 'tradename':
-          return tradeName.includes(term);
-        case 'name':
-        case 'lastname':
-          return name.includes(term);
-        case 'all':
-        default:
-          return (
-            id.startsWith(term) ||
-            identification.startsWith(term) ||
-            businessName.includes(term) ||
-            tradeName.includes(term) ||
-            name.includes(term)
-          );
-      }
     }
 
     return true;
@@ -135,10 +125,10 @@ const getPlaceholder = () => {
       return 'Buscar por código (ej: ALFKI)...';
     case 'identification':
       return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
-    case 'name':
-      return 'Buscar por nombres y apellidos...';
+    case 'firstname':
+      return 'Buscar por nombres...';
     case 'lastname':
-      return 'Buscar por primer apellido...';
+      return 'Buscar por apellidos...';
     case 'businessname':
       return 'Buscar por razón social de la empresa...';
     case 'tradename':
@@ -266,8 +256,8 @@ const getPlaceholder = () => {
           <option value="tradename">🏪 Nombre Comercial</option>
           <option value="identification">🪪 Cédula / RUC</option>
           <option value="id">#️⃣ Código ID</option>
-          <option value="name">👤 Nombres y Apellidos</option>
-          <option value="lastname">👤 Solo Primer Apellido</option>
+          <option value="firstname">👤 Nombres</option>
+          <option value="lastname">👤 Apellidos</option>
           <option value="businessname">🏢 Razón Social</option>
         </select>
 
@@ -354,7 +344,7 @@ const getPlaceholder = () => {
               </TableCell>
               <TableCell>
                 <Badge
-                  v-if="customer.customerType === 'Empresa' || customer.customerType === 2"
+                  v-if="isEmpresa(customer.customerType)"
                   variant="info"
                   class="flex items-center w-fit space-x-1"
                 >

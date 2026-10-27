@@ -191,7 +191,6 @@ const hasActiveFilters = computed(
               <option value="all">🔍 Búsqueda Global (Todos los campos)</option>
               <option value="invoiceNumber">🧾 N° Factura / Comprobante</option>
               <option value="customerName">👤 Cliente / Razón Social</option>
-              <option value="customerId">#️⃣ Código ID de Cliente</option>
             </select>
           </div>
 

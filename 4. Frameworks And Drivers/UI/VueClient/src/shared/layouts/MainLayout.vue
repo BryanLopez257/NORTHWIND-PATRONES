@@ -47,9 +47,6 @@ const handleConfirmLogout = () => {
 const navItems = [
   { label: 'Nueva Orden', path: '/createorder', icon: ShoppingCart },
   { label: 'Facturas', path: '/invoices', icon: Receipt },
-  { label: 'Clientes', path: '/customers', icon: Users },
-  { label: 'Productos', path: '/products', icon: Package },
-  { label: 'Configuración', path: '/settings', icon: Settings },
 ];
 
 const isActive = (path: string) => {

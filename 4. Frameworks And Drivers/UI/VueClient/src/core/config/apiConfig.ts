@@ -4,7 +4,7 @@
  * Gestor dinámico y reactivo de la URL del Backend (API REST).
  * ============================================================================
  * Funcionalidades:
- * 1. Lee y persiste la URL del servidor en `localStorage` (default: http://localhost:5000).
+ * 1. Lee y persiste la URL del servidor en `localStorage` (default: /nw-api o http://localhost:5000).
  * 2. Emite reactividad para actualizar `apiClient.defaults.baseURL` en caliente
  *    sin requerir recarga total del navegador.
  * 3. Validación de URL con feedback visual.
@@ -37,8 +37,11 @@ export function getApiBaseUrl(): string {
 export function setApiBaseUrl(newUrl: string): boolean {
   try {
     const trimmed = newUrl.trim().replace(/\/+$/, '');
-    // Validar formato de URL
-    new URL(trimmed);
+    if (!trimmed) return false;
+    // Validar formato: si no es ruta relativa (/nw-api), validar formato URL absoluta
+    if (!trimmed.startsWith('/')) {
+      new URL(trimmed);
+    }
     localStorage.setItem(API_STORAGE_KEY, trimmed);
     currentApiBaseUrl.value = trimmed;
     if (_apiClientRef) {

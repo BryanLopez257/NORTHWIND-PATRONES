@@ -21,6 +21,7 @@ public static class InvoicesController
         string? searchTerm,
         string? invoiceNumber,
         string? customerName,
+        string? customerId,
         int? pageNumber,
         int? pageSize,
         IGetInvoicesInputPort inputPort,
@@ -31,6 +32,7 @@ public static class InvoicesController
             SearchTerm = searchTerm,
             InvoiceNumber = invoiceNumber,
             CustomerName = customerName,
+            CustomerId = customerId,
             PageNumber = pageNumber ?? 1,
             PageSize = pageSize ?? 10
         };

@@ -48,6 +48,7 @@ const searchTerm = ref('');
 const debouncedSearchTerm = useDebounce(searchTerm, 350);
 const searchCriteria = ref<'all' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename' | 'id'>('all');
 const typeFilter = ref<'Todos' | 'Persona Natural' | 'Empresa'>('Todos');
+const onlyWithoutDebt = ref(false);
 const blockedWarning = ref<string | null>(null);
 
 const currentPage = ref(1);
@@ -71,6 +72,52 @@ const { data: pagedData, isLoading, error } = useCustomers(serverFilters);
 const customerList = computed(() => pagedData.value?.items ?? []);
 const totalCount = computed(() => pagedData.value?.totalCount ?? 0);
 const totalPages = computed(() => pagedData.value?.totalPages ?? 1);
+
+const filteredCustomers = computed(() => {
+  return customerList.value.filter((customer) => {
+    if (onlyWithoutDebt.value && customer.currentBalance > 0) {
+      return false;
+    }
+
+    if (typeFilter.value !== 'Todos' && customer.customerType !== typeFilter.value) {
+      return false;
+    }
+
+    if (searchTerm.value.trim()) {
+      const term = searchTerm.value.trim().toLowerCase();
+      const id = (customer.id ?? '').toLowerCase();
+      const identification = (customer.identification ?? '').toLowerCase();
+      const businessName = (customer.businessName ?? '').toLowerCase();
+      const tradeName = (customer.tradeName ?? '').toLowerCase();
+      const name = (customer.name ?? '').toLowerCase();
+
+      switch (searchCriteria.value) {
+        case 'id':
+          return id.startsWith(term);
+        case 'identification':
+          return identification.startsWith(term);
+        case 'businessname':
+          return businessName.includes(term);
+        case 'tradename':
+          return tradeName.includes(term);
+        case 'name':
+        case 'lastname':
+          return name.includes(term);
+        case 'all':
+        default:
+          return (
+            id.startsWith(term) ||
+            identification.startsWith(term) ||
+            businessName.includes(term) ||
+            tradeName.includes(term) ||
+            name.includes(term)
+          );
+      }
+    }
+
+    return true;
+  });
+});
 
 const handleSelect = (customer: CustomerDto) => {
   if (customer.currentBalance > 0) {
@@ -118,10 +165,10 @@ const getPlaceholder = () => {
   >
     <div class="space-y-4 pt-1">
       <!-- Banner de Condición de Crédito -->
-      <div class="p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-950 text-xs sm:text-sm flex items-start space-x-3 shadow-xs">
-        <ShieldAlert class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+      <div class="p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/60 text-amber-950 dark:text-amber-200 text-xs sm:text-sm flex items-start space-x-3 shadow-xs">
+        <ShieldAlert class="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div class="leading-snug">
-          <span class="font-bold text-amber-900 block sm:inline mr-1">
+          <span class="font-bold text-amber-900 dark:text-amber-300 block sm:inline mr-1">
             Condición de Crédito:
           </span>
           <span>
@@ -133,75 +180,87 @@ const getPlaceholder = () => {
       <!-- Alerta Reactiva de Advertencia si se intenta interactuar con un cliente moroso -->
       <div
         v-if="blockedWarning"
-        class="p-3 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 text-xs sm:text-sm flex items-start space-x-2 animate-fade-in"
+        class="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs sm:text-sm flex items-start space-x-2 animate-fade-in"
       >
-        <Lock class="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+        <Lock class="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
         <div class="flex-1 font-medium leading-relaxed">{{ blockedWarning }}</div>
         <button
           type="button"
           @click="blockedWarning = null"
-          class="text-rose-500 hover:text-rose-700 ml-2 font-bold"
+          class="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 ml-2 font-bold"
         >
           &times;
         </button>
       </div>
 
-      <!-- Filtros de Tipo de Cliente -->
-      <div class="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-lg w-fit border border-slate-200">
-        <button
-          type="button"
-          @click="typeFilter = 'Todos'"
-          :class="
-            cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
-              typeFilter === 'Todos'
-                ? 'bg-white text-sky-700 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            )
-          "
-        >
-          <Users class="h-3.5 w-3.5" />
-          <span>Todos</span>
-        </button>
+      <!-- Filtros de Tipo de Cliente y Checkbox de Deudores -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg w-fit border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            @click="typeFilter = 'Todos'"
+            :class="
+              cn(
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
+                typeFilter === 'Todos'
+                  ? 'bg-white text-sky-700 shadow-xs font-semibold dark:bg-slate-700 dark:text-sky-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              )
+            "
+          >
+            <Users class="h-3.5 w-3.5" />
+            <span>Todos</span>
+          </button>
 
-        <button
-          type="button"
-          @click="typeFilter = 'Persona Natural'"
-          :class="
-            cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
-              typeFilter === 'Persona Natural'
-                ? 'bg-white text-sky-700 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            )
-          "
-        >
-          <User class="h-3.5 w-3.5" />
-          <span>Personas Naturales</span>
-        </button>
+          <button
+            type="button"
+            @click="typeFilter = 'Persona Natural'"
+            :class="
+              cn(
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
+                typeFilter === 'Persona Natural'
+                  ? 'bg-white text-sky-700 shadow-xs font-semibold dark:bg-slate-700 dark:text-sky-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              )
+            "
+          >
+            <User class="h-3.5 w-3.5" />
+            <span>Personas Naturales</span>
+          </button>
 
-        <button
-          type="button"
-          @click="typeFilter = 'Empresa'"
-          :class="
-            cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
-              typeFilter === 'Empresa'
-                ? 'bg-white text-sky-700 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            )
-          "
-        >
-          <Building2 class="h-3.5 w-3.5" />
-          <span>Empresas</span>
-        </button>
+          <button
+            type="button"
+            @click="typeFilter = 'Empresa'"
+            :class="
+              cn(
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5',
+                typeFilter === 'Empresa'
+                  ? 'bg-white text-sky-700 shadow-xs font-semibold dark:bg-slate-700 dark:text-sky-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              )
+            "
+          >
+            <Building2 class="h-3.5 w-3.5" />
+            <span>Empresas</span>
+          </button>
+        </div>
+
+        <!-- Checkbox para ocultar clientes deudores -->
+        <label class="flex items-center space-x-2 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none bg-slate-50 dark:bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+          <input
+            type="checkbox"
+            v-model="onlyWithoutDebt"
+            class="rounded text-sky-600 focus:ring-sky-500 h-4 w-4 dark:bg-slate-900 dark:border-slate-700"
+          />
+          <span>Ocultar clientes deudores (Solo sin saldo)</span>
+        </label>
       </div>
 
       <!-- Barra de Búsqueda y Selector de Criterio -->
       <div class="flex flex-col sm:flex-row gap-2">
         <select
           v-model="searchCriteria"
-          class="text-xs h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 sm:w-56"
+          class="text-xs h-9 rounded-lg border border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 px-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 sm:w-56"
         >
           <option value="all">🔍 Todos los campos</option>
           <option value="tradename">🏪 Nombre Comercial</option>
@@ -223,7 +282,7 @@ const getPlaceholder = () => {
             v-if="searchTerm"
             type="button"
             @click="searchTerm = ''"
-            class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+            class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             title="Limpiar búsqueda"
           >
             <X class="h-4 w-4" />
@@ -232,18 +291,18 @@ const getPlaceholder = () => {
       </div>
 
       <!-- Tabla de Clientes -->
-      <div class="max-h-96 overflow-y-auto border border-slate-200 rounded-lg">
-        <div v-if="isLoading" class="p-8 text-center text-slate-500">
+      <div class="max-h-96 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+        <div v-if="isLoading" class="p-8 text-center text-slate-500 dark:text-slate-400">
           <Users class="h-8 w-8 mx-auto text-slate-400 animate-spin mb-2" />
           Cargando clientes...
         </div>
 
-        <div v-else-if="error" class="p-6 text-center text-rose-600 flex items-center justify-center space-x-2">
+        <div v-else-if="error" class="p-6 text-center text-rose-600 dark:text-rose-400 flex items-center justify-center space-x-2">
           <AlertCircle class="h-5 w-5" />
           <span>Error al obtener clientes del catálogo.</span>
         </div>
 
-        <div v-else-if="customerList.length === 0" class="p-8 text-center text-slate-400">
+        <div v-else-if="filteredCustomers.length === 0" class="p-8 text-center text-slate-400 dark:text-slate-500">
           No se encontraron clientes coincidentes con la búsqueda.
         </div>
 
@@ -260,37 +319,37 @@ const getPlaceholder = () => {
           </TableHeader>
           <TableBody>
             <TableRow
-              v-for="customer in customerList"
+              v-for="customer in filteredCustomers"
               :key="customer.id"
               :class="cn(
-                selectedCustomerId === customer.id && 'bg-sky-50/50',
-                customer.currentBalance > 0 && 'bg-rose-50/20'
+                selectedCustomerId === customer.id && 'bg-sky-50/50 dark:bg-sky-950/30',
+                customer.currentBalance > 0 && 'bg-rose-50/20 dark:bg-rose-950/20'
               )"
             >
-              <TableCell class="font-mono font-bold text-xs text-sky-700">
+              <TableCell class="font-mono font-bold text-xs text-sky-700 dark:text-sky-400">
                 {{ customer.id }}
               </TableCell>
               <TableCell>
-                <div class="font-medium text-slate-900">{{ customer.name }}</div>
-                <div v-if="customer.tradeName" class="text-[11px] text-slate-500">
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ customer.name }}</div>
+                <div v-if="customer.tradeName" class="text-[11px] text-slate-500 dark:text-slate-400">
                   🏪 Comercial: {{ customer.tradeName }}
                 </div>
                 <span
                   v-if="customer.currentBalance > 0"
-                  class="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-0.5"
+                  class="text-[11px] text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1 mt-0.5"
                 >
                   <AlertCircle class="w-3 h-3 shrink-0" />
                   Bloqueado por saldo pendiente
                 </span>
                 <span
                   v-else
-                  class="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5"
+                  class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-0.5"
                 >
                   <Check class="w-3 h-3 shrink-0" />
                   Habilitado para compra
                 </span>
               </TableCell>
-              <TableCell class="font-mono text-xs text-slate-600">
+              <TableCell class="font-mono text-xs text-slate-600 dark:text-slate-400">
                 {{ customer.identification || '—' }}
               </TableCell>
               <TableCell>
@@ -333,10 +392,10 @@ const getPlaceholder = () => {
                   type="button"
                   size="sm"
                   @click="handleSelect(customer)"
-                  class="h-8 px-2 text-xs bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100"
+                  class="h-8 px-2 text-xs bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/60"
                   title="Haga clic para ver el motivo de bloqueo"
                 >
-                  <Lock class="h-3.5 w-3.5 mr-1 text-rose-600 shrink-0" />
+                  <Lock class="h-3.5 w-3.5 mr-1 text-rose-600 dark:text-rose-400 shrink-0" />
                   <span>Moroso / Bloqueado</span>
                 </Button>
                 <Button

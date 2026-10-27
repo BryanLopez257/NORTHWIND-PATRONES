@@ -8,4 +8,5 @@ public class InvoiceFilterDto : PaginationFilterDto
     public string SearchTerm { get; set; }
     public string InvoiceNumber { get; set; }
     public string CustomerName { get; set; }
+    public string CustomerId { get; set; }
 }

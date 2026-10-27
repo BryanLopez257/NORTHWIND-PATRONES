@@ -9,6 +9,7 @@ export const invoicesService = {
       if (filters.searchTerm?.trim()) params.searchTerm = filters.searchTerm.trim();
       if (filters.invoiceNumber?.trim()) params.invoiceNumber = filters.invoiceNumber.trim();
       if (filters.customerName?.trim()) params.customerName = filters.customerName.trim();
+      if (filters.customerId?.trim()) params.customerId = filters.customerId.trim();
       if (typeof filters.pageNumber === 'number') params.pageNumber = filters.pageNumber;
       if (typeof filters.pageSize === 'number') params.pageSize = filters.pageSize;
     }

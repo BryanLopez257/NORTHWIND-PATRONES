@@ -7,6 +7,10 @@
  */
 
 export const isControlKey = (e: KeyboardEvent): boolean => {
+  // Si no hay evento o e.key es undefined/null (típico en autocompletado del navegador, gestores de contraseñas o eventos sintéticos)
+  if (!e || typeof e.key !== 'string') {
+    return true;
+  }
   // Atajos de navegación, combinaciones y teclas de control
   if (e.ctrlKey || e.metaKey || e.altKey) {
     return true;
@@ -21,7 +25,7 @@ export const isControlKey = (e: KeyboardEvent): boolean => {
 // ============================================================================
 // 7. Regex para detección y rechazo de Emojis y Pictogramas Unicode
 // ============================================================================
-export const EMOJI_REGEX = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{200D}\u{FE0F}]/u;
+export const EMOJI_REGEX = /[\p{Extended_Pictographic}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{200D}\u{FE0F}]/u;
 export const EMOJI_GLOBAL_REGEX = new RegExp(EMOJI_REGEX.source, 'gu');
 
 export const blockEmojis = (e: KeyboardEvent): void => {
@@ -41,14 +45,16 @@ export const sanitizeRejectEmojis = (value: string): string => {
 // ============================================================================
 export const allowOnlyLettersAndSpaces = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]$/.test(e.key)) {
+  if (EMOJI_REGEX.test(e.key) || !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
 export const sanitizeLettersAndSpaces = (value: string): string => {
   if (!value) return '';
-  return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+  return value
+    .replace(EMOJI_GLOBAL_REGEX, '')
+    .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
 };
 
 // ============================================================================
@@ -56,14 +62,14 @@ export const sanitizeLettersAndSpaces = (value: string): string => {
 // ============================================================================
 export const allowOnlyAlpha = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[a-zA-Z]$/.test(e.key)) {
+  if (EMOJI_REGEX.test(e.key) || !/^[a-zA-Z]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
 export const sanitizeAlpha = (value: string): string => {
   if (!value) return '';
-  return value.replace(/[^a-zA-Z]/g, '');
+  return value.replace(EMOJI_GLOBAL_REGEX, '').replace(/[^a-zA-Z]/g, '');
 };
 
 // ============================================================================
@@ -71,14 +77,14 @@ export const sanitizeAlpha = (value: string): string => {
 // ============================================================================
 export const allowOnlyDigits = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[0-9]$/.test(e.key)) {
+  if (EMOJI_REGEX.test(e.key) || !/^[0-9]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
 export const sanitizeDigits = (value: string): string => {
   if (!value) return '';
-  return value.replace(/\D/g, '');
+  return value.replace(EMOJI_GLOBAL_REGEX, '').replace(/\D/g, '');
 };
 
 // ============================================================================
@@ -86,14 +92,14 @@ export const sanitizeDigits = (value: string): string => {
 // ============================================================================
 export const allowAlphanumeric = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[a-zA-Z0-9]$/.test(e.key)) {
+  if (EMOJI_REGEX.test(e.key) || !/^[a-zA-Z0-9]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
 export const sanitizeAlphanumeric = (value: string): string => {
   if (!value) return '';
-  return value.replace(/[^a-zA-Z0-9]/g, '');
+  return value.replace(EMOJI_GLOBAL_REGEX, '').replace(/[^a-zA-Z0-9]/g, '');
 };
 
 // ============================================================================
@@ -101,14 +107,16 @@ export const sanitizeAlphanumeric = (value: string): string => {
 // ============================================================================
 export const allowAddressChars = (e: KeyboardEvent): void => {
   if (isControlKey(e)) return;
-  if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#\-\/°]$/.test(e.key)) {
+  if (EMOJI_REGEX.test(e.key) || !/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#\-\/°]$/.test(e.key)) {
     e.preventDefault();
   }
 };
 
 export const sanitizeAddress = (value: string, maxLength: number = 60): string => {
   if (!value) return '';
-  const cleaned = value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#\-\/°]/g, '');
+  const cleaned = value
+    .replace(EMOJI_GLOBAL_REGEX, '')
+    .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#\-\/°]/g, '');
   return cleaned.slice(0, maxLength);
 };
 
@@ -135,6 +143,7 @@ export const sanitizeEmail = (value: string, maxLength: number = 254): string =>
 // 8. noWhitespace: Bloquea la barra espaciadora y saltos de línea
 // ============================================================================
 export const blockWhitespace = (e: KeyboardEvent): void => {
+  if (!e || typeof e.key !== 'string') return;
   if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
     e.preventDefault();
   }

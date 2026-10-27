@@ -93,10 +93,10 @@ const visiblePages = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 text-xs text-slate-600 select-none">
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 select-none">
     <div>
       <span v-if="resolvedTotalCount > 0">
-        Mostrando <strong class="text-slate-900 font-semibold">{{ startItem }}</strong> a <strong class="text-slate-900 font-semibold">{{ endItem }}</strong> de <strong class="text-slate-900 font-semibold">{{ resolvedTotalCount }}</strong> {{ itemName }}
+        Mostrando <strong class="text-slate-900 dark:text-slate-200 font-semibold">{{ startItem }}</strong> a <strong class="text-slate-900 dark:text-slate-200 font-semibold">{{ endItem }}</strong> de <strong class="text-slate-900 dark:text-slate-200 font-semibold">{{ resolvedTotalCount }}</strong> {{ itemName }}
       </span>
       <span v-else>
         No hay {{ itemName }} para mostrar
@@ -117,7 +117,7 @@ const visiblePages = computed(() => {
       </Button>
 
       <template v-for="page in visiblePages" :key="page">
-        <span v-if="page < 0" class="px-1.5 text-slate-400">...</span>
+        <span v-if="page < 0" class="px-1.5 text-slate-400 dark:text-slate-500">...</span>
         <button
           v-else
           type="button"
@@ -127,7 +127,7 @@ const visiblePages = computed(() => {
               'h-8 min-w-[32px] px-2 rounded-lg text-xs font-medium transition-colors',
               page === currentPage
                 ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             )
           "
         >

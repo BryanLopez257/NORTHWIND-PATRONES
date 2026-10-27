@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ShoppingCart,
   User,
+  X,
 } from 'lucide-vue-next';
 import { useInvoices } from '../composables/useInvoices';
 import type { InvoiceResponseDto, InvoiceFilters } from '../types';
@@ -33,23 +34,42 @@ import {
   Pagination,
 } from '@/shared/ui';
 
-const invoiceNumberQuery = ref('');
-const customerNameQuery = ref('');
-
-const debouncedInvoiceNumber = useDebounce(invoiceNumberQuery, 350);
-const debouncedCustomerName = useDebounce(customerNameQuery, 350);
+const searchCriteria = ref<'all' | 'invoiceNumber' | 'customerName' | 'customerId'>('all');
+const searchQuery = ref('');
+const debouncedSearchQuery = useDebounce(searchQuery, 350);
 
 const currentPage = ref(1);
 const pageSize = 10;
 
-const filters = computed<InvoiceFilters>(() => ({
-  invoiceNumber: debouncedInvoiceNumber.value.trim() || undefined,
-  customerName: debouncedCustomerName.value.trim() || undefined,
-  pageNumber: currentPage.value,
-  pageSize,
-}));
+const filters = computed<InvoiceFilters>(() => {
+  const query = debouncedSearchQuery.value.trim();
+  const f: InvoiceFilters = {
+    pageNumber: currentPage.value,
+    pageSize,
+  };
 
-watch([debouncedInvoiceNumber, debouncedCustomerName], () => {
+  if (query) {
+    switch (searchCriteria.value) {
+      case 'invoiceNumber':
+        f.invoiceNumber = query;
+        break;
+      case 'customerName':
+        f.customerName = query;
+        break;
+      case 'customerId':
+        f.customerId = query;
+        break;
+      case 'all':
+      default:
+        f.searchTerm = query;
+        break;
+    }
+  }
+
+  return f;
+});
+
+watch([debouncedSearchQuery, searchCriteria], () => {
   currentPage.value = 1;
 });
 
@@ -74,8 +94,22 @@ const handleOpenVoucher = (invoice: InvoiceResponseDto) => {
 };
 
 const handleClearFilters = () => {
-  invoiceNumberQuery.value = '';
-  customerNameQuery.value = '';
+  searchQuery.value = '';
+  searchCriteria.value = 'all';
+};
+
+const getPlaceholder = () => {
+  switch (searchCriteria.value) {
+    case 'invoiceNumber':
+      return 'Ej. FAC-0001 (búsqueda por prefijo/exacta)...';
+    case 'customerName':
+      return 'Buscar por nombres o razón social...';
+    case 'customerId':
+      return 'Buscar por código ID de cliente (ej. ALFKI)...';
+    case 'all':
+    default:
+      return 'Buscar por comprobante, cliente o código ID...';
+  }
 };
 
 const formatDate = (dateStr: string) => {
@@ -101,7 +135,7 @@ const formatCurrency = (val: number) => {
 };
 
 const hasActiveFilters = computed(
-  () => invoiceNumberQuery.value.trim() !== '' || customerNameQuery.value.trim() !== ''
+  () => searchQuery.value.trim() !== ''
 );
 </script>
 
@@ -144,45 +178,57 @@ const hasActiveFilters = computed(
     <!-- Filter and Search Bar -->
     <Card class="border-slate-200 shadow-xs">
       <CardContent class="p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
-          <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Número de Factura
+        <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+          <!-- Selector de Criterio de Búsqueda -->
+          <div class="sm:w-64">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+              Criterio de búsqueda
+            </label>
+            <select
+              v-model="searchCriteria"
+              class="w-full text-xs h-10 rounded-lg border border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 px-3 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="all">🔍 Búsqueda Global (Todos los campos)</option>
+              <option value="invoiceNumber">🧾 N° Factura / Comprobante</option>
+              <option value="customerName">👤 Cliente / Razón Social</option>
+              <option value="customerId">#️⃣ Código ID de Cliente</option>
+            </select>
+          </div>
+
+          <!-- Término de búsqueda con debounce reactivo hacia el servidor -->
+          <div class="flex-1">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+              Término de búsqueda
             </label>
             <div class="relative">
-              <Hash class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search class="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Ej. FAC-0001..."
-                v-model="invoiceNumberQuery"
-                class="pl-9"
+                :placeholder="getPlaceholder()"
+                v-model="searchQuery"
+                class="pl-9 pr-9 h-10 text-xs sm:text-sm"
               />
+              <button
+                v-if="searchQuery"
+                type="button"
+                @click="searchQuery = ''"
+                class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
+                title="Limpiar término"
+              >
+                <X class="h-4 w-4" />
+              </button>
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Cliente (Nombre / Razón Social / ID)
-            </label>
-            <div class="relative">
-              <Search class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Buscar cliente..."
-                v-model="customerNameQuery"
-                class="pl-9"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
+          <!-- Limpiar filtros -->
+          <div v-if="hasActiveFilters" class="sm:self-end">
             <Button
-              v-if="hasActiveFilters"
               type="button"
               variant="outline"
               size="sm"
               @click="handleClearFilters"
-              class="h-10 text-xs text-slate-500"
+              class="h-10 text-xs text-slate-600 border-slate-300 hover:bg-slate-50"
             >
-              Limpiar Filtros
+              Limpiar
             </Button>
           </div>
         </div>

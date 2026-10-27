@@ -312,7 +312,7 @@ const handleCountryPaste = (e: ClipboardEvent) => {
 };
 
 const handlePostalPaste = (e: ClipboardEvent) => {
-  handlePasteFilter(e, (text) => sanitizeAlphanumeric(text).toUpperCase().slice(0, 10));
+  handlePasteFilter(e, (text) => sanitizeDigits(text).slice(0, 10));
 };
 
 // Manejadores de Carrito de Compras
@@ -471,11 +471,11 @@ const onSubmit = async () => {
     <!-- Encabezado de la Página -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center space-x-2">
-          <ShoppingCart class="h-6 w-6 text-sky-600" />
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+          <ShoppingCart class="h-6 w-6 text-sky-600 dark:text-sky-400" />
           <span>Nueva Orden de Venta</span>
         </h1>
-        <p class="text-sm text-slate-500 mt-0.5">
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           Complete los datos del cliente, dirección de entrega y productos para procesar la orden.
         </p>
       </div>
@@ -485,7 +485,7 @@ const onSubmit = async () => {
         variant="outline"
         size="sm"
         @click="showResetConfirm = true"
-        class="flex items-center space-x-1.5 text-slate-600 self-start sm:self-auto"
+        class="flex items-center space-x-1.5 text-slate-600 dark:text-slate-300 self-start sm:self-auto"
       >
         <RefreshCw class="h-4 w-4" />
         <span>Limpiar Formulario</span>
@@ -503,10 +503,10 @@ const onSubmit = async () => {
 
     <form @submit.prevent="onSubmit" class="space-y-6" novalidate>
       <!-- Paso 1: Datos del Cliente y Facturación -->
-      <Card class="border-slate-200 shadow-xs">
+      <Card class="border-slate-200 dark:border-slate-800 shadow-xs">
         <CardHeader class="pb-3">
-          <CardTitle class="text-base flex items-center space-x-2 text-slate-800">
-            <span class="flex items-center justify-center h-6 w-6 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
+          <CardTitle class="text-base flex items-center space-x-2 text-slate-800 dark:text-slate-100">
+            <span class="flex items-center justify-center h-6 w-6 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 text-xs font-bold">
               1
             </span>
             <span>Datos del Cliente y Facturación</span>
@@ -583,7 +583,7 @@ const onSubmit = async () => {
                 @update:model-value="customerDocument = sanitizeDigits($event).slice(0, 13)"
                 @blur="markTouched('customerDocument')"
                 @keydown="allowOnlyDigits"
-                :class="selectedCustomer?.identification ? 'bg-slate-50 cursor-not-allowed' : undefined"
+                :class="selectedCustomer?.identification ? 'bg-slate-50 dark:bg-slate-800/60 cursor-not-allowed' : undefined"
               />
               <p v-if="customerDocument && documentValidation.isValid" class="text-xs text-emerald-600 mt-1 font-medium">
                 ✓ {{ documentValidation.message }}
@@ -658,17 +658,17 @@ const onSubmit = async () => {
                 </span>
               </div>
 
-              <!-- Código Postal -->
+              <!-- Código Postal (Solo números) -->
               <div class="sm:col-span-2 md:col-span-1">
                 <Input
                   id="ship-postal"
                   label="Código Postal"
                   placeholder="170150"
                   :max-length="10"
-                  class="uppercase font-mono"
+                  class="font-mono"
                   :model-value="shipPostalCode"
-                  @update:model-value="shipPostalCode = sanitizeAlphanumeric($event).toUpperCase().slice(0, 10)"
-                  @keydown="allowAlphanumeric"
+                  @update:model-value="shipPostalCode = sanitizeDigits($event).slice(0, 10)"
+                  @keydown="allowOnlyDigits"
                   @paste="handlePostalPaste"
                 />
                 <span class="text-[11px] text-slate-400 mt-1 block">
@@ -681,10 +681,10 @@ const onSubmit = async () => {
       </Card>
 
       <!-- Paso 2: Líneas de la Orden (Carrito de Compras) -->
-      <Card class="border-slate-200 shadow-xs">
+      <Card class="border-slate-200 dark:border-slate-800 shadow-xs">
         <CardHeader class="pb-3 flex flex-row items-center justify-between">
-          <CardTitle class="text-base flex items-center space-x-2 text-slate-800">
-            <span class="flex items-center justify-center h-6 w-6 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
+          <CardTitle class="text-base flex items-center space-x-2 text-slate-800 dark:text-slate-100">
+            <span class="flex items-center justify-center h-6 w-6 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 text-xs font-bold">
               2
             </span>
             <span>Líneas de la Orden (Carrito de Compras)</span>
@@ -727,6 +727,7 @@ const onSubmit = async () => {
               <TableRow>
                 <TableHead class="w-16">ID</TableHead>
                 <TableHead>Producto</TableHead>
+                <TableHead class="text-center w-28">Stock Disp.</TableHead>
                 <TableHead class="text-right w-28">Precio Unit.</TableHead>
                 <TableHead class="text-center w-48">Cantidad</TableHead>
                 <TableHead class="text-right w-32">Subtotal</TableHead>
@@ -735,12 +736,16 @@ const onSubmit = async () => {
             </TableHeader>
             <TableBody>
               <TableRow v-for="item in cartItems" :key="item.productId">
-                <TableCell class="font-mono text-xs font-bold text-slate-500">
+                <TableCell class="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
                   #{{ item.productId }}
                 </TableCell>
-                <TableCell class="font-medium text-slate-900">
-                  <div>{{ item.productName }}</div>
-                  <div class="text-[11px] text-slate-400">Stock disp.: {{ item.unitsInStock }}</div>
+                <TableCell class="font-medium text-slate-900 dark:text-slate-100">
+                  {{ item.productName }}
+                </TableCell>
+                <TableCell class="text-center">
+                  <Badge variant="info" class="font-mono text-xs">
+                    {{ item.unitsInStock }} uds.
+                  </Badge>
                 </TableCell>
                 <TableCell class="text-right font-mono text-xs">
                   ${{ Number(item.unitPrice).toFixed(2) }}
@@ -751,7 +756,7 @@ const onSubmit = async () => {
                       <button
                         type="button"
                         @click="handleUpdateQuantity(item.productId, item.quantity - 1)"
-                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm"
+                        class="h-7 w-7 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center font-bold text-sm"
                       >
                         -
                       </button>
@@ -760,26 +765,26 @@ const onSubmit = async () => {
                         :value="item.quantity"
                         @input="handleManualQuantityInput(item.productId, ($event.target as HTMLInputElement).value)"
                         @keydown="allowOnlyDigits"
-                        class="h-7 w-14 text-center font-mono text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        class="h-7 w-14 text-center font-mono text-xs rounded border border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
                       />
                       <button
                         type="button"
                         @click="handleUpdateQuantity(item.productId, item.quantity + 1)"
                         :disabled="item.quantity >= item.unitsInStock"
-                        class="h-7 w-7 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-sm disabled:opacity-40"
+                        class="h-7 w-7 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center font-bold text-sm disabled:opacity-40"
                       >
                         +
                       </button>
                     </div>
                     <span
                       v-if="item.quantity > item.unitsInStock"
-                      class="text-[11px] text-red-600 font-semibold mt-1"
+                      class="text-[11px] text-red-600 dark:text-red-400 font-semibold mt-1"
                     >
                       Excede stock disponible
                     </span>
                   </div>
                 </TableCell>
-                <TableCell class="text-right font-mono font-semibold text-slate-900">
+                <TableCell class="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">
                   ${{ Number(item.subTotal).toFixed(2) }}
                 </TableCell>
                 <TableCell class="text-center">
@@ -791,7 +796,7 @@ const onSubmit = async () => {
                       size="sm"
                       @click="handleStartReplaceProduct(item)"
                       title="Cambiar por otro producto del catálogo"
-                      class="h-8 px-2 text-xs text-sky-600 hover:text-sky-700 hover:bg-sky-50 border-sky-200 flex items-center space-x-1"
+                      class="h-8 px-2 text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 border-sky-200 dark:border-sky-800 flex items-center space-x-1"
                     >
                       <ArrowLeftRight class="h-3.5 w-3.5" />
                       <span>Cambiar</span>
@@ -804,7 +809,7 @@ const onSubmit = async () => {
                       size="icon"
                       @click="itemToDelete = item"
                       title="Quitar producto"
-                      class="h-8 w-8 text-slate-400 hover:text-red-600"
+                      class="h-8 w-8 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 class="h-4 w-4" />
                     </Button>
@@ -817,26 +822,26 @@ const onSubmit = async () => {
       </Card>
 
       <!-- Paso 3: Resumen y Emisión de Orden -->
-      <Card class="border-slate-200 shadow-xs">
+      <Card class="border-slate-200 dark:border-slate-800 shadow-xs">
         <CardContent class="p-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <div class="text-xs text-slate-500 space-y-1">
+            <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1">
               <p>• Tarifa de impuesto calculada con IVA 15% (Ecuador legal vigente).</p>
               <p>• El cliente debe tener saldo comercial al día ($0.00) para emitir la orden.</p>
             </div>
 
-            <div class="w-full sm:w-80 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div class="flex justify-between text-xs text-slate-600">
+            <div class="w-full sm:w-80 space-y-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div class="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                 <span>Base Imponible:</span>
                 <span class="font-mono font-semibold">${{ Number(subTotal).toFixed(2) }} USD</span>
               </div>
-              <div class="flex justify-between text-xs text-slate-600">
+              <div class="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                 <span>IVA (15%):</span>
                 <span class="font-mono font-semibold">${{ Number(tax).toFixed(2) }} USD</span>
               </div>
-              <div class="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-300">
+              <div class="flex justify-between text-base font-bold text-slate-900 dark:text-slate-100 pt-2 border-t border-slate-300 dark:border-slate-700">
                 <span>TOTAL:</span>
-                <span class="font-mono text-emerald-700">${{ Number(total).toFixed(2) }} USD</span>
+                <span class="font-mono text-emerald-700 dark:text-emerald-400">${{ Number(total).toFixed(2) }} USD</span>
               </div>
 
               <div class="pt-3">

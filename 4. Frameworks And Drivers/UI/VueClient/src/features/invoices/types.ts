@@ -31,6 +31,7 @@ export interface InvoiceFilters {
   searchTerm?: string;
   invoiceNumber?: string;
   customerName?: string;
+  customerId?: string;
   pageNumber?: number;
   pageSize?: number;
 }

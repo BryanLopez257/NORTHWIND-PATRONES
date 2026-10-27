@@ -1,4 +1,4 @@
-namespace NorthWind.Sales.Backend.Repositories.Repositories;
+﻿namespace NorthWind.Sales.Backend.Repositories.Repositories;
 
 internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQueriesRepository
 {
@@ -113,18 +113,28 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                 query = criteria switch
                 {
                     "identification" => query.Where(c => c.Identification.StartsWith(term)),
-                    "businessname" => query.Where(c => c.CustomerType == CustomerType.Legal && c.BusinessName != null && c.BusinessName.Contains(term)),
+                    "businessname" => query.Where(c => c.BusinessName != null && c.BusinessName.Contains(term)),
                     "tradename" => query.Where(c => c.TradeName != null && c.TradeName.Contains(term)),
-                    "lastname" => query.Where(c => c.CustomerType == CustomerType.Natural && c.LastName != null && c.LastName.StartsWith(term)),
-                    // Name es la columna calculada persistida "Apellidos Nombres", permite buscar nombres compuestos ("Trujillo Pérez").
-                    "name" => query.Where(c => c.CustomerType == CustomerType.Natural && c.Name.Contains(term)),
+                    "lastname" => query.Where(c =>
+                        (c.LastName != null && c.LastName.Contains(term)) ||
+                        (c.SecondLastName != null && c.SecondLastName.Contains(term))),
+                    "name" => query.Where(c =>
+                        (c.Name != null && c.Name.Contains(term)) ||
+                        (c.FirstName != null && c.FirstName.Contains(term)) ||
+                        (c.SecondName != null && c.SecondName.Contains(term)) ||
+                        (c.LastName != null && c.LastName.Contains(term)) ||
+                        (c.SecondLastName != null && c.SecondLastName.Contains(term))),
                     "id" => query.Where(c => c.Id.StartsWith(term)),
                     _ => query.Where(c =>
                         c.Id.StartsWith(term) ||
                         c.Identification.StartsWith(term) ||
-                        c.Name.Contains(term) ||
                         (c.BusinessName != null && c.BusinessName.Contains(term)) ||
-                        (c.TradeName != null && c.TradeName.Contains(term)))
+                        (c.TradeName != null && c.TradeName.Contains(term)) ||
+                        (c.Name != null && c.Name.Contains(term)) ||
+                        (c.FirstName != null && c.FirstName.Contains(term)) ||
+                        (c.SecondName != null && c.SecondName.Contains(term)) ||
+                        (c.LastName != null && c.LastName.Contains(term)) ||
+                        (c.SecondLastName != null && c.SecondLastName.Contains(term)))
                 };
             }
 
@@ -300,14 +310,18 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                 query = query.Where(i => i.InvoiceNumber.StartsWith(term) || (hasNumericId && i.Id == numericId));
             }
 
+            if (!string.IsNullOrWhiteSpace(filter.CustomerId))
+            {
+                var term = filter.CustomerId.Trim();
+                // Código de cliente: StartsWith (identificador estructurado)
+                query = query.Where(i => i.CustomerId.StartsWith(term));
+            }
+
             if (!string.IsNullOrWhiteSpace(filter.CustomerName))
             {
                 var term = filter.CustomerName.Trim();
-                // Cliente: CustomerId / documento por prefijo (identificadores), nombre por contención (lenguaje natural).
-                query = query.Where(i =>
-                    i.CustomerId.StartsWith(term) ||
-                    (i.CustomerDocumentSnapshot != null && i.CustomerDocumentSnapshot.StartsWith(term)) ||
-                    (i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term)));
+                // Nombre / Razón social del cliente: Contains (lenguaje natural desacoplado de CustomerId)
+                query = query.Where(i => i.CustomerFullNameSnapshot != null && i.CustomerFullNameSnapshot.Contains(term));
             }
         }
 

@@ -69,7 +69,7 @@ const handleClose = () => {
     >
       <!-- Backdrop estático (NO se cierra al hacer clic fuera, idéntico a React) -->
       <div
-        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity no-print"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity no-print"
         aria-hidden="true"
       />
 
@@ -79,7 +79,7 @@ const handleClose = () => {
         aria-modal="true"
         :class="
           cn(
-            'relative z-50 w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl bg-white p-6 shadow-xl border border-slate-200 transition-all',
+            'relative z-50 w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-200 dark:border-slate-800 transition-all text-slate-900 dark:text-slate-100',
             'animate-in fade-in zoom-in-95 duration-200',
             'print:static print:max-h-none print:shadow-none print:border-none print:p-0 print:w-full print:block',
             props.class
@@ -87,12 +87,12 @@ const handleClose = () => {
         "
       >
         <!-- Header -->
-        <div class="flex items-start justify-between mb-3 shrink-0 border-b border-slate-200 pb-3.5 no-print">
+        <div class="flex items-start justify-between mb-3 shrink-0 border-b border-slate-200 dark:border-slate-800 pb-3.5 no-print">
           <div>
-            <h2 v-if="title" class="text-lg font-bold text-slate-900 leading-tight">
+            <h2 v-if="title" class="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">
               {{ title }}
             </h2>
-            <p v-if="description" class="text-xs sm:text-sm text-slate-500 mt-1">
+            <p v-if="description" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
               {{ description }}
             </p>
           </div>
@@ -102,7 +102,7 @@ const handleClose = () => {
             size="icon"
             @click="handleClose"
             aria-label="Cerrar modal"
-            class="text-slate-400 hover:text-slate-600 -mr-2 -mt-2 shrink-0"
+            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 -mr-2 -mt-2 shrink-0"
           >
             <X class="h-4 w-4" />
           </Button>

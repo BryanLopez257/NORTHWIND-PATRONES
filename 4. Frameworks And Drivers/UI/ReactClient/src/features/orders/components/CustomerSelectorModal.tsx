@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { Search, Check, AlertCircle, Users, ShieldAlert, Lock, Building2, User, X } from 'lucide-react';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { CustomerDto, CustomerFilters } from '@/features/customers/types';
@@ -18,7 +18,7 @@ export interface CustomerSelectorModalProps {
   selectedCustomerId?: string;
 }
 
-type SearchCriteriaType = 'all' | 'identification' | 'name' | 'lastname' | 'businessname' | 'tradename' | 'id';
+type SearchCriteriaType = 'all' | 'identification' | 'firstname' | 'lastname' | 'businessname' | 'tradename' | 'id';
 
 export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
   open,
@@ -73,10 +73,10 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
         return 'Buscar por código (ej: ALFKI)...';
       case 'identification':
         return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
-      case 'name':
-        return 'Buscar por nombres y apellidos...';
+      case 'firstname':
+        return 'Buscar por nombres...';
       case 'lastname':
-        return 'Buscar por primer apellido...';
+        return 'Buscar por apellidos...';
       case 'businessname':
         return 'Buscar por razón social de la empresa...';
       case 'tradename':
@@ -191,8 +191,8 @@ export const CustomerSelectorModal: React.FC<CustomerSelectorModalProps> = ({
                 <option value="id">🏷️ Código (ID)</option>
               </optgroup>
               <optgroup label="Personas Naturales">
-                <option value="name">👤 Nombres y Apellidos</option>
-                <option value="lastname">👤 Primer Apellido</option>
+                <option value="firstname">👤 Nombres</option>
+                <option value="lastname">👤 Apellidos</option>
               </optgroup>
               <optgroup label="Empresas / Jurídicas">
                 <option value="businessname">🏢 Razón Social</option>

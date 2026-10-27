@@ -53,6 +53,30 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   const totalCount = pagedData?.totalCount ?? 0;
   const totalPages = pagedData?.totalPages ?? 1;
 
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (onlyInStock && p.unitsInStock <= 0) {
+        return false;
+      }
+
+      if (searchTerm.trim()) {
+        const term = searchTerm.trim().toLowerCase();
+        const idStr = p.id.toString();
+        const nameStr = (p.name ?? '').toLowerCase();
+
+        if (searchCriteria === 'id') {
+          return idStr.startsWith(term) || idStr === term;
+        }
+        if (searchCriteria === 'name') {
+          return nameStr.includes(term);
+        }
+        return nameStr.includes(term) || idStr.startsWith(term) || idStr === term;
+      }
+
+      return true;
+    });
+  }, [products, onlyInStock, searchTerm, searchCriteria]);
+
   const isReplaceMode = Boolean(replacingProductId);
 
   const handleSelect = (product: ProductDto) => {
@@ -164,7 +188,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
               <AlertCircle className="h-5 w-5" />
               <span>Error al obtener productos. Por favor intente nuevamente.</span>
             </div>
-          ) : products.length === 0 ? (
+          ) : filteredProducts.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No se encontraron productos coincidentes con los filtros aplicados.
             </div>
@@ -180,7 +204,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => {
+                {filteredProducts.map((product) => {
                   const isCurrentReplacingProduct = isReplaceMode && product.id === replacingProductId;
                   const isAlreadyInCart = selectedProductIds.includes(product.id);
                   const isOutOfStock = product.unitsInStock <= 0;
@@ -305,7 +329,7 @@ export const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
         {/* Footer */}
         <div className="flex justify-between items-center pt-2">
           <span className="text-xs text-slate-500">
-            Total en catálogo: {totalCount} productos
+            Mostrando {filteredProducts.length} de {totalCount} productos
           </span>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar Catálogo

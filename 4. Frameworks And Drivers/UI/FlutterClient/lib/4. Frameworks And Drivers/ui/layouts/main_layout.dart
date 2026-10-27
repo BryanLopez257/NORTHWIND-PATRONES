@@ -18,7 +18,7 @@ class MainLayout extends StatelessWidget {
     NavItem(label: 'Facturas', route: '/invoices', icon: Icons.receipt_long_outlined),
     // NavItem(label: 'Clientes', route: '/customers', icon: Icons.people_outline), // Oculto
     // NavItem(label: 'Productos', route: '/products', icon: Icons.inventory_2_outlined), // Oculto
-    NavItem(label: 'Configuración', route: '/settings', icon: Icons.settings_outlined),
+    // NavItem(label: 'Configuración', route: '/settings', icon: Icons.settings_outlined),
   ];
 
   void _showLogoutDialog(BuildContext context) {

@@ -4,20 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiConfig {
   static const String _storageKey = 'nw_web_api_url';
 
+  /// Permite inyectar la URL al compilar o ejecutar mediante:
+  /// flutter run --dart-define=API_URL=https://...
+  static const String _envApiUrl = String.fromEnvironment('API_URL');
+
+  /// URL del túnel Cloudflare asignado para NorthWind WebApi en Flutter
+  static const String tunnelUrl = 'https://flutter.luminacrminmobiliario.com';
+
   static String get defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:5000';
+    if (_envApiUrl.trim().isNotEmpty) {
+      return _envApiUrl.trim();
     }
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'http://10.0.2.2:5000';
-      case TargetPlatform.windows:
-      case TargetPlatform.macOS:
-      case TargetPlatform.linux:
-      case TargetPlatform.iOS:
-      default:
-        return 'http://localhost:5000';
-    }
+    // Por defecto usa el túnel de Cloudflare para que funcione en Web móvil y Android
+    return tunnelUrl;
   }
 
   static String _baseUrl = defaultBaseUrl;
@@ -26,10 +25,17 @@ class ApiConfig {
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_storageKey);
-    if (saved != null && saved.trim().isNotEmpty) {
+
+    // Si no hay nada guardado o tiene un default viejo (localhost/10.0.2.2/devracpd), usar el nuevo túnel
+    if (saved != null &&
+        saved.trim().isNotEmpty &&
+        saved != 'http://localhost:5000' &&
+        saved != 'http://10.0.2.2:5000' &&
+        !saved.contains('devracpd')) {
       _baseUrl = saved.trim();
     } else {
       _baseUrl = defaultBaseUrl;
+      await prefs.setString(_storageKey, defaultBaseUrl);
     }
   }
 

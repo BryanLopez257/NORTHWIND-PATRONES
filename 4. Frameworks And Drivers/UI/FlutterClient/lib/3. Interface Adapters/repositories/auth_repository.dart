@@ -35,7 +35,16 @@ class AuthRepository implements IAuthRepository {
   @override
   Future<String?> getSavedToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    final token = prefs.getString(_tokenKey);
+    if (token != null && token.isNotEmpty) {
+      if (TokenUtils.isTokenExpired(token)) {
+        await clearSession();
+        return null;
+      }
+      ApiClient.setToken(token);
+      return token;
+    }
+    return null;
   }
 
   @override

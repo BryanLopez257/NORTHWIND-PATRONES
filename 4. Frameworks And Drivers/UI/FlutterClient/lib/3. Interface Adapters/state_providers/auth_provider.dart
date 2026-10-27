@@ -46,6 +46,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  void handleUnauthorized() {
+    _currentUser = null;
+    _errorMessage = 'Sesión expirada. Por favor inicie sesión nuevamente.';
+    notifyListeners();
+  }
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;

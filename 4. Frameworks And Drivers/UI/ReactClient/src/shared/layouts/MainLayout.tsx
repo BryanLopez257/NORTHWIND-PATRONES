@@ -33,9 +33,6 @@ export const MainLayout: React.FC = () => {
   const navItems = [
     { label: 'Nueva Orden', path: '/create-order', icon: ShoppingCart },
     { label: 'Facturas', path: '/invoices', icon: Receipt },
-    { label: 'Clientes', path: '/customers', icon: Users },
-    { label: 'Productos', path: '/products', icon: Package },
-    { label: 'Configuración', path: '/settings', icon: Settings },
   ];
 
   return (

@@ -1,4 +1,4 @@
-﻿namespace NorthWind.Sales.Backend.Repositories.Repositories;
+namespace NorthWind.Sales.Backend.Repositories.Repositories;
 
 internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQueriesRepository
 {
@@ -118,6 +118,9 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                     "lastname" => query.Where(c =>
                         (c.LastName != null && c.LastName.Contains(term)) ||
                         (c.SecondLastName != null && c.SecondLastName.Contains(term))),
+                    "firstname" => query.Where(c =>
+                        (c.FirstName != null && c.FirstName.Contains(term)) ||
+                        (c.SecondName != null && c.SecondName.Contains(term))),
                     "name" => query.Where(c =>
                         (c.Name != null && c.Name.Contains(term)) ||
                         (c.FirstName != null && c.FirstName.Contains(term)) ||
@@ -153,7 +156,7 @@ internal class QueriesRepository(INorthWindSalesQueriesDataContext context) : IQ
                 {
                     query = query.Where(c => c.CustomerType == CustomerType.Legal);
                 }
-                else if (typeStr.Equals("Persona", StringComparison.OrdinalIgnoreCase) || typeStr.Equals("Natural", StringComparison.OrdinalIgnoreCase))
+                else if (typeStr.Equals("Persona", StringComparison.OrdinalIgnoreCase) || typeStr.Equals("Natural", StringComparison.OrdinalIgnoreCase) || typeStr.Equals("Persona Natural", StringComparison.OrdinalIgnoreCase))
                 {
                     query = query.Where(c => c.CustomerType == CustomerType.Natural);
                 }

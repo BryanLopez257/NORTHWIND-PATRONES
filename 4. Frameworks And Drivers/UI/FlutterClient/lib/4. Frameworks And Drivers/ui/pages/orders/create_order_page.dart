@@ -648,7 +648,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                                           );
                                         },
                                         icon: const Icon(Icons.person_add_outlined, size: 16),
-                                        label: const Text('Buscar'),
+                                        label: const Text('Agregar cliente'),
                                         style: OutlinedButton.styleFrom(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                           foregroundColor: const Color(0xFF2563EB),
@@ -1171,18 +1171,11 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                                             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                             onPressed: item.quantity > 1 ? () => _updateQuantity(item, item.quantity - 1) : null,
                                           ),
-                                          Container(
-                                            width: 40,
-                                            padding: const EdgeInsets.symmetric(vertical: 4),
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              border: Border.all(color: const Color(0xFFCBD5E1)),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              '${item.quantity}',
-                                              style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 12),
-                                            ),
+                                          _QuantityInput(
+                                            key: ValueKey('qty_${item.productId}'),
+                                            quantity: item.quantity,
+                                            maxStock: item.unitsInStock,
+                                            onQuantityChanged: (newQty) => _updateQuantity(item, newQty),
                                           ),
                                           IconButton(
                                             icon: const Icon(Icons.add, size: 16),
@@ -1322,6 +1315,122 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _QuantityInput extends StatefulWidget {
+  final int quantity;
+  final int maxStock;
+  final ValueChanged<int> onQuantityChanged;
+
+  const _QuantityInput({
+    super.key,
+    required this.quantity,
+    required this.maxStock,
+    required this.onQuantityChanged,
+  });
+
+  @override
+  State<_QuantityInput> createState() => _QuantityInputState();
+}
+
+class _QuantityInputState extends State<_QuantityInput> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '${widget.quantity}');
+    _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuantityInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.quantity != oldWidget.quantity) {
+      final currentParsed = int.tryParse(_controller.text);
+      if (currentParsed != widget.quantity) {
+        _controller.text = '${widget.quantity}';
+      }
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _commitValue(_controller.text);
+    }
+  }
+
+  void _commitValue(String val) {
+    int parsed = int.tryParse(val) ?? widget.quantity;
+    if (parsed < 1) parsed = 1;
+    if (widget.maxStock > 0 && parsed > widget.maxStock) {
+      parsed = widget.maxStock;
+    }
+    _controller.text = '$parsed';
+    widget.onQuantityChanged(parsed);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 52,
+      height: 32,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          color: Color(0xFF0F172A),
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          isDense: true,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+          ),
+        ),
+        onSubmitted: _commitValue,
+        onChanged: (val) {
+          final parsed = int.tryParse(val);
+          if (parsed != null && parsed >= 1) {
+            final clamped = widget.maxStock > 0 && parsed > widget.maxStock ? widget.maxStock : parsed;
+            widget.onQuantityChanged(clamped);
+          }
+        },
       ),
     );
   }

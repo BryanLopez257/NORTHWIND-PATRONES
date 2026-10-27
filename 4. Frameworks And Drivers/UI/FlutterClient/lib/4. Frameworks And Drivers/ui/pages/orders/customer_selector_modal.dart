@@ -22,6 +22,7 @@ class CustomerSelectorModal extends StatefulWidget {
 class _CustomerSelectorModalState extends State<CustomerSelectorModal> {
   final CustomersRepository _repository = CustomersRepository();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _horizontalScrollController = ScrollController();
   Timer? _debounceTimer;
 
   String _searchCriteria = 'all';
@@ -46,6 +47,7 @@ class _CustomerSelectorModalState extends State<CustomerSelectorModal> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -120,10 +122,10 @@ class _CustomerSelectorModalState extends State<CustomerSelectorModal> {
         return 'Buscar por código (ej: ALFKI)...';
       case 'identification':
         return 'Buscar por cédula (10 dígitos) o RUC (13 dígitos)...';
-      case 'name':
-        return 'Buscar por nombres y apellidos...';
+      case 'firstname':
+        return 'Buscar por nombres...';
       case 'lastname':
-        return 'Buscar por primer apellido...';
+        return 'Buscar por apellidos...';
       case 'businessname':
         return 'Buscar por razón social de la empresa...';
       case 'tradename':
@@ -283,8 +285,8 @@ class _CustomerSelectorModalState extends State<CustomerSelectorModal> {
                                 DropdownMenuItem(value: 'tradename', child: Text('🏪 Comercial')),
                                 DropdownMenuItem(value: 'identification', child: Text('💳 Cédula/RUC')),
                                 DropdownMenuItem(value: 'id', child: Text('🏷️ Código')),
-                                DropdownMenuItem(value: 'name', child: Text('👤 Nombres y apellidos')),
-                                DropdownMenuItem(value: 'lastname', child: Text('👤 Primer Apellido')),
+                                DropdownMenuItem(value: 'firstname', child: Text('👤 Nombres')),
+                                DropdownMenuItem(value: 'lastname', child: Text('👤 Apellidos')),
                                 DropdownMenuItem(value: 'businessname', child: Text('🏢 Razón Social')),
                               ],
                               onChanged: (val) {
@@ -359,102 +361,108 @@ class _CustomerSelectorModalState extends State<CustomerSelectorModal> {
                               ? const Center(
                                   child: Text('No se encontraron clientes coincidentes.', style: TextStyle(color: Color(0xFF94A3B8))),
                                 )
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
+                              : Scrollbar(
+                                  controller: _horizontalScrollController,
+                                  thumbVisibility: true,
+                                  trackVisibility: true,
                                   child: SingleChildScrollView(
+                                    controller: _horizontalScrollController,
                                     scrollDirection: Axis.horizontal,
-                                    child: DataTable(
-                                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                                      headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                                      dataRowMinHeight: 48,
-                                      dataRowMaxHeight: 52,
-                                      columns: const [
-                                        DataColumn(label: Text('ID')),
-                                        DataColumn(label: Text('Nombre / Razón Social')),
-                                        DataColumn(label: Text('Identificación')),
-                                        DataColumn(label: Text('Tipo')),
-                                        DataColumn(label: Text('Saldo Actual'), numeric: true),
-                                        DataColumn(label: Center(child: Text('Acción'))),
-                                      ],
-                                      rows: _customers.map((c) {
-                                        final isBlocked = c.currentBalance > 0;
-                                        final isSelected = widget.selectedCustomerId?.toUpperCase() == c.id.toUpperCase();
-                                        final isLegal = c.customerType == 2;
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.vertical,
+                                      child: DataTable(
+                                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                                        headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                        dataRowMinHeight: 48,
+                                        dataRowMaxHeight: 52,
+                                        columns: const [
+                                          DataColumn(label: Text('ID')),
+                                          DataColumn(label: Text('Nombre / Razón Social')),
+                                          DataColumn(label: Text('Identificación')),
+                                          DataColumn(label: Text('Tipo')),
+                                          DataColumn(label: Text('Saldo Actual'), numeric: true),
+                                          DataColumn(label: Center(child: Text('Acción'))),
+                                        ],
+                                        rows: _customers.map((c) {
+                                          final isBlocked = c.currentBalance > 0;
+                                          final isSelected = widget.selectedCustomerId?.toUpperCase() == c.id.toUpperCase();
+                                          final isLegal = c.customerType == 2;
 
-                                        return DataRow(
-                                          color: WidgetStateProperty.resolveWith<Color?>((states) {
-                                            if (isSelected) return const Color(0xFFEFF6FF);
-                                            if (isBlocked) return const Color(0xFFFFF1F2).withValues(alpha: 0.4);
-                                            return null;
-                                          }),
-                                          cells: [
-                                            DataCell(
-                                              Text(
-                                                c.id,
-                                                style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8), fontSize: 12),
+                                          return DataRow(
+                                            color: WidgetStateProperty.resolveWith<Color?>((states) {
+                                              if (isSelected) return const Color(0xFFEFF6FF);
+                                              if (isBlocked) return const Color(0xFFFFF1F2).withValues(alpha: 0.4);
+                                              return null;
+                                            }),
+                                            cells: [
+                                              DataCell(
+                                                Text(
+                                                  c.id,
+                                                  style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8), fontSize: 12),
+                                                ),
                                               ),
-                                            ),
-                                            DataCell(
-                                              Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A))),
-                                                  if (c.tradeName != null && c.tradeName!.isNotEmpty)
-                                                    Text('🏪 ${c.tradeName}', style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                                                  if (isBlocked)
-                                                    const Text('Bloqueado por saldo pendiente', style: TextStyle(fontSize: 10, color: Color(0xFFE11D48), fontWeight: FontWeight.w600))
-                                                  else
-                                                    const Text('Habilitado para compra', style: TextStyle(fontSize: 10, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
-                                                ],
+                                              DataCell(
+                                                Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A))),
+                                                    if (c.tradeName != null && c.tradeName!.isNotEmpty)
+                                                      Text('🏪 ${c.tradeName}', style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                                    if (isBlocked)
+                                                      const Text('Bloqueado por saldo pendiente', style: TextStyle(fontSize: 10, color: Color(0xFFE11D48), fontWeight: FontWeight.w600))
+                                                    else
+                                                      const Text('Habilitado para compra', style: TextStyle(fontSize: 10, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                            DataCell(
-                                              Text(c.identification.isNotEmpty ? c.identification : '—', style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF475569))),
-                                            ),
-                                            DataCell(
-                                              BadgeWidget(
-                                                label: isLegal ? 'Empresa' : 'Persona Natural',
-                                                variant: isLegal ? BadgeVariant.info : BadgeVariant.defaultVariant,
+                                              DataCell(
+                                                Text(c.identification.isNotEmpty ? c.identification : '—', style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF475569))),
                                               ),
-                                            ),
-                                            DataCell(
-                                              BadgeWidget(
-                                                label: '\$${c.currentBalance.toStringAsFixed(2)}',
-                                                variant: isBlocked ? BadgeVariant.danger : BadgeVariant.success,
+                                              DataCell(
+                                                BadgeWidget(
+                                                  label: isLegal ? 'Empresa' : 'Persona Natural',
+                                                  variant: isLegal ? BadgeVariant.info : BadgeVariant.defaultVariant,
+                                                ),
                                               ),
-                                            ),
-                                            DataCell(
-                                              isBlocked
-                                                  ? ElevatedButton.icon(
-                                                      onPressed: () => _handleSelect(c),
-                                                      icon: const Icon(Icons.lock_outline, size: 14),
-                                                      label: const Text('Bloqueado'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: const Color(0xFFFFF1F2),
-                                                        foregroundColor: const Color(0xFFBE123C),
-                                                        side: const BorderSide(color: Color(0xFFFECDD3)),
-                                                        elevation: 0,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                              DataCell(
+                                                BadgeWidget(
+                                                  label: '\$${c.currentBalance.toStringAsFixed(2)}',
+                                                  variant: isBlocked ? BadgeVariant.danger : BadgeVariant.success,
+                                                ),
+                                              ),
+                                              DataCell(
+                                                isBlocked
+                                                    ? ElevatedButton.icon(
+                                                        onPressed: () => _handleSelect(c),
+                                                        icon: const Icon(Icons.lock_outline, size: 14),
+                                                        label: const Text('Bloqueado'),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: const Color(0xFFFFF1F2),
+                                                          foregroundColor: const Color(0xFFBE123C),
+                                                          side: const BorderSide(color: Color(0xFFFECDD3)),
+                                                          elevation: 0,
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                                        ),
+                                                      )
+                                                    : ElevatedButton.icon(
+                                                        onPressed: () => _handleSelect(c),
+                                                        icon: Icon(isSelected ? Icons.check_circle : Icons.check, size: 14),
+                                                        label: Text(isSelected ? 'Seleccionado' : 'Seleccionar'),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: isSelected ? const Color(0xFF334155) : const Color(0xFF2563EB),
+                                                          foregroundColor: Colors.white,
+                                                          elevation: 0,
+                                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                                        ),
                                                       ),
-                                                    )
-                                                  : ElevatedButton.icon(
-                                                      onPressed: () => _handleSelect(c),
-                                                      icon: Icon(isSelected ? Icons.check_circle : Icons.check, size: 14),
-                                                      label: Text(isSelected ? 'Seleccionado' : 'Seleccionar'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: isSelected ? const Color(0xFF334155) : const Color(0xFF2563EB),
-                                                        foregroundColor: Colors.white,
-                                                        elevation: 0,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                                      ),
-                                                    ),
-                                            ),
-                                          ],
-                                        );
-                                      }).toList(),
+                                              ),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      ),
                                     ),
                                   ),
                                 ),

@@ -169,11 +169,20 @@ class ApiClient {
     }
 
     dynamic decodedData;
-    if (response.body.isNotEmpty) {
+    String rawBody = '';
+    if (response.bodyBytes.isNotEmpty) {
       try {
-        decodedData = jsonDecode(response.body);
+        rawBody = utf8.decode(response.bodyBytes, allowMalformed: true);
       } catch (_) {
-        decodedData = response.body;
+        rawBody = response.body;
+      }
+
+      if (rawBody.trim().isNotEmpty) {
+        try {
+          decodedData = jsonDecode(rawBody);
+        } catch (_) {
+          decodedData = rawBody;
+        }
       }
     }
 
@@ -182,31 +191,70 @@ class ApiClient {
     }
 
     final fieldErrors = <String, List<String>>{};
-    String message = 'Ocurrió un error en el servidor (código ${response.statusCode}).';
+    final specificMessages = <String>[];
 
     if (decodedData is Map<String, dynamic>) {
-      if (decodedData['detail'] != null) {
-        message = decodedData['detail'].toString();
-      } else if (decodedData['title'] != null) {
-        message = decodedData['title'].toString();
-      } else if (decodedData['message'] != null) {
-        message = decodedData['message'].toString();
-      } else if (decodedData['error'] != null) {
-        message = decodedData['error'].toString();
-      }
-
       final errors = decodedData['errors'];
-      if (errors is Map<String, dynamic>) {
+
+      if (errors is List) {
+        for (final item in errors) {
+          if (item is Map) {
+            final prop = item['propertyName']?.toString() ??
+                item['property']?.toString() ??
+                item['field']?.toString() ??
+                'general';
+            final msg = item['message']?.toString() ??
+                item['errorMessage']?.toString() ??
+                item['error']?.toString();
+            if (msg != null && msg.trim().isNotEmpty) {
+              final cleanMsg = msg.trim();
+              fieldErrors.putIfAbsent(prop, () => []).add(cleanMsg);
+              specificMessages.add(cleanMsg);
+            }
+          } else if (item is String && item.trim().isNotEmpty) {
+            final cleanMsg = item.trim();
+            fieldErrors.putIfAbsent('general', () => []).add(cleanMsg);
+            specificMessages.add(cleanMsg);
+          }
+        }
+      } else if (errors is Map<String, dynamic>) {
         errors.forEach((key, val) {
           if (val is List) {
-            fieldErrors[key] = val.map((e) => e.toString()).toList();
-          } else if (val is String) {
-            fieldErrors[key] = [val];
+            for (final v in val) {
+              if (v != null && v.toString().trim().isNotEmpty) {
+                final cleanMsg = v.toString().trim();
+                fieldErrors.putIfAbsent(key, () => []).add(cleanMsg);
+                specificMessages.add(cleanMsg);
+              }
+            }
+          } else if (val is String && val.trim().isNotEmpty) {
+            final cleanMsg = val.trim();
+            fieldErrors.putIfAbsent(key, () => []).add(cleanMsg);
+            specificMessages.add(cleanMsg);
           }
         });
       }
-    } else if (decodedData is String && decodedData.isNotEmpty) {
-      message = decodedData;
+    }
+
+    String message;
+    if (specificMessages.isNotEmpty) {
+      message = specificMessages.join('\n');
+    } else if (decodedData is Map<String, dynamic>) {
+      if (decodedData['detail'] != null && decodedData['detail'].toString().trim().isNotEmpty) {
+        message = decodedData['detail'].toString().trim();
+      } else if (decodedData['title'] != null && decodedData['title'].toString().trim().isNotEmpty) {
+        message = decodedData['title'].toString().trim();
+      } else if (decodedData['message'] != null && decodedData['message'].toString().trim().isNotEmpty) {
+        message = decodedData['message'].toString().trim();
+      } else if (decodedData['error'] != null && decodedData['error'].toString().trim().isNotEmpty) {
+        message = decodedData['error'].toString().trim();
+      } else {
+        message = 'Ocurrió un error en el servidor (código ${response.statusCode}).';
+      }
+    } else if (decodedData is String && decodedData.trim().isNotEmpty) {
+      message = decodedData.trim();
+    } else {
+      message = 'Ocurrió un error en el servidor (código ${response.statusCode}).';
     }
 
     throw ApiException(

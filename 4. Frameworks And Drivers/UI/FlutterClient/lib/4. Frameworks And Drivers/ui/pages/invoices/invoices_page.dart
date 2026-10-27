@@ -14,6 +14,7 @@ class InvoicesPage extends StatefulWidget {
 
 class _InvoicesPageState extends State<InvoicesPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _tableHorizontalController = ScrollController();
   Timer? _debounceTimer;
 
   @override
@@ -28,6 +29,7 @@ class _InvoicesPageState extends State<InvoicesPage> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _tableHorizontalController.dispose();
     super.dispose();
   }
 
@@ -333,193 +335,199 @@ class _InvoicesPageState extends State<InvoicesPage> {
                       ),
                     )
                   else
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                        headingTextStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF475569),
-                        ),
-                        dataRowMinHeight: 52,
-                        dataRowMaxHeight: 56,
-                        columns: const [
-                          DataColumn(label: Text('N° Factura')),
-                          DataColumn(label: Text('Fecha Emisión')),
-                          DataColumn(label: Text('Cliente / Razón Social')),
-                          DataColumn(label: Text('Doc. Tributario / ID')),
-                          DataColumn(label: Text('Vendedor')),
-                          DataColumn(label: Text('Subtotal'), numeric: true),
-                          DataColumn(label: Text('IVA (15%)'), numeric: true),
-                          DataColumn(label: Text('Total'), numeric: true),
-                          DataColumn(label: Center(child: Text('Comprobante'))),
-                        ],
-                        rows: provider.invoices.map((inv) {
-                          return DataRow(
-                            cells: [
-                              // N° Factura
-                              DataCell(
-                                Text(
-                                  inv.invoiceNumber.isNotEmpty ? inv.invoiceNumber : 'FAC-${inv.id}',
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1D4ED8),
+                    Scrollbar(
+                      controller: _tableHorizontalController,
+                      thumbVisibility: true,
+                      trackVisibility: true,
+                      child: SingleChildScrollView(
+                        controller: _tableHorizontalController,
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                          headingTextStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                          ),
+                          dataRowMinHeight: 52,
+                          dataRowMaxHeight: 56,
+                          columns: const [
+                            DataColumn(label: Text('N° Factura')),
+                            DataColumn(label: Text('Fecha Emisión')),
+                            DataColumn(label: Text('Cliente / Razón Social')),
+                            DataColumn(label: Text('Doc. Tributario / ID')),
+                            DataColumn(label: Text('Vendedor')),
+                            DataColumn(label: Text('Subtotal'), numeric: true),
+                            DataColumn(label: Text('IVA (15%)'), numeric: true),
+                            DataColumn(label: Text('Total'), numeric: true),
+                            DataColumn(label: Center(child: Text('Comprobante'))),
+                          ],
+                          rows: provider.invoices.map((inv) {
+                            return DataRow(
+                              cells: [
+                                // N° Factura
+                                DataCell(
+                                  Text(
+                                    inv.invoiceNumber.isNotEmpty ? inv.invoiceNumber : 'FAC-${inv.id}',
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1D4ED8),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              // Fecha Emisión
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 13, color: Color(0xFF94A3B8)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _formatDate(inv.createdDate),
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                                    ),
-                                  ],
+                                // Fecha Emisión
+                                DataCell(
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.calendar_today, size: 13, color: Color(0xFF94A3B8)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _formatDate(inv.createdDate),
+                                        style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              // Cliente / Razón Social
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.business, size: 14, color: Color(0xFF94A3B8)),
-                                    const SizedBox(width: 4),
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(maxWidth: 200),
-                                      child: Text(
-                                        inv.customerName?.isNotEmpty == true
-                                            ? inv.customerName!
-                                            : inv.customerId,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF1E293B),
+                                // Cliente / Razón Social
+                                DataCell(
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.business, size: 14, color: Color(0xFF94A3B8)),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 200),
+                                        child: Text(
+                                          inv.customerName?.isNotEmpty == true
+                                              ? inv.customerName!
+                                              : inv.customerId,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF1E293B),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              // Doc. Tributario / ID
-                              DataCell(
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      inv.customerDocument ?? 'S/D',
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF334155),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEFF6FF),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'ID: ${inv.customerId}',
+                                // Doc. Tributario / ID
+                                DataCell(
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        inv.customerDocument ?? 'S/D',
                                         style: const TextStyle(
                                           fontFamily: 'monospace',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF1D4ED8),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF334155),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Vendedor
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.person_outline, size: 13, color: Color(0xFF94A3B8)),
-                                    const SizedBox(width: 4),
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(maxWidth: 120),
-                                      child: Text(
-                                        inv.sellerFullName?.isNotEmpty == true
-                                            ? inv.sellerFullName!
-                                            : 'Ventas NW',
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEFF6FF),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'ID: ${inv.customerId}',
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF1D4ED8),
+                                          ),
+                                        ),
                                       ),
+                                    ],
+                                  ),
+                                ),
+                                // Vendedor
+                                DataCell(
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.person_outline, size: 13, color: Color(0xFF94A3B8)),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 120),
+                                        child: Text(
+                                          inv.sellerFullName?.isNotEmpty == true
+                                              ? inv.sellerFullName!
+                                              : 'Ventas NW',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Subtotal
+                                DataCell(
+                                  Text(
+                                    _formatCurrency(inv.subTotal),
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 12,
+                                      color: Color(0xFF334155),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              // Subtotal
-                              DataCell(
-                                Text(
-                                  _formatCurrency(inv.subTotal),
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                    color: Color(0xFF334155),
                                   ),
                                 ),
-                              ),
-                              // IVA
-                              DataCell(
-                                Text(
-                                  _formatCurrency(inv.tax),
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                    color: Color(0xFF334155),
+                                // IVA
+                                DataCell(
+                                  Text(
+                                    _formatCurrency(inv.tax),
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 12,
+                                      color: Color(0xFF334155),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              // Total
-                              DataCell(
-                                Text(
-                                  _formatCurrency(inv.total),
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF047857),
+                                // Total
+                                DataCell(
+                                  Text(
+                                    _formatCurrency(inv.total),
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF047857),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              // Comprobante
-                              DataCell(
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (_) => InvoiceVoucher(invoice: inv),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.visibility_outlined, size: 14),
-                                  label: const Text('Ver'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF1D4ED8),
-                                    side: const BorderSide(color: Color(0xFFBFDBFE)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    minimumSize: const Size(60, 32),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                // Comprobante
+                                DataCell(
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (_) => InvoiceVoucher(invoice: inv),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.visibility_outlined, size: 14),
+                                    label: const Text('Ver'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1D4ED8),
+                                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      minimumSize: const Size(60, 32),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
 

@@ -41,6 +41,30 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
 
   bool get _isReplaceMode => widget.replacingProductId != null;
 
+  List<ProductDto> get _filteredProducts {
+    return _products.where((p) {
+      if (_onlyInStock && p.unitsInStock <= 0) {
+        return false;
+      }
+
+      final term = _searchController.text.trim().toLowerCase();
+      if (term.isNotEmpty) {
+        final idStr = p.id.toString();
+        final nameStr = p.name.toLowerCase();
+
+        if (_searchCriteria == 'id') {
+          return idStr.startsWith(term) || idStr == term;
+        }
+        if (_searchCriteria == 'name') {
+          return nameStr.contains(term);
+        }
+        return nameStr.contains(term) || idStr.startsWith(term) || idStr == term;
+      }
+
+      return true;
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +117,7 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
   }
 
   void _onSearchChanged(String value) {
+    setState(() {});
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 350), () {
       if (mounted) {
@@ -329,11 +354,12 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
                           ? Center(
                               child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFE11D48), fontSize: 13)),
                             )
-                          : _products.isEmpty
+                          : _filteredProducts.isEmpty
                               ? const Center(
                                   child: Text('No se encontraron productos coincidentes.', style: TextStyle(color: Color(0xFF94A3B8))),
                                 )
-                              : SingleChildScrollView(
+                              : LayoutBuilder(
+                                  builder: (context, constraints) => SingleChildScrollView(
                                   scrollDirection: Axis.vertical,
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
@@ -342,14 +368,21 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
                                       headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                                       dataRowMinHeight: 48,
                                       dataRowMaxHeight: 52,
-                                      columns: const [
-                                        DataColumn(label: Text('ID')),
-                                        DataColumn(label: Text('Producto')),
-                                        DataColumn(label: Text('Precio Unitario'), numeric: true),
-                                        DataColumn(label: Center(child: Text('Stock Disp.'))),
-                                        DataColumn(label: Center(child: Text('Acción'))),
+                                      columns: [
+                                        const DataColumn(label: Text('ID')),
+                                        DataColumn(
+                                          label: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              minWidth: (constraints.maxWidth - 600).clamp(160.0, double.infinity),
+                                            ),
+                                            child: const Text('Producto'),
+                                          ),
+                                        ),
+                                        const DataColumn(label: Text('Precio Unitario'), numeric: true),
+                                        const DataColumn(label: Center(child: Text('Stock Disp.'))),
+                                        const DataColumn(label: Center(child: Text('Acción'))),
                                       ],
-                                      rows: _products.map((p) {
+                                      rows: _filteredProducts.map((p) {
                                         final isCurrentReplacing = _isReplaceMode && p.id == widget.replacingProductId;
                                         final isAlreadyInCart = widget.selectedProductIds.contains(p.id);
                                         final isOutOfStock = p.unitsInStock <= 0;
@@ -477,6 +510,7 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
                                       }).toList(),
                                     ),
                                   ),
+                                  ),
                                 ),
                 ),
               ),
@@ -488,7 +522,7 @@ class _ProductSelectorModalState extends State<ProductSelectorModal> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total en catálogo: $_totalCount productos',
+                      'Mostrando ${_filteredProducts.length} de $_totalCount productos',
                       style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                     OutlinedButton(

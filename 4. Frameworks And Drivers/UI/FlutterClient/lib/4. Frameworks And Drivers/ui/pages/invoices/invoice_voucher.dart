@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:printing/printing.dart';
 import '../../../../1. Enterprise Business Rules/enterprise_business_rules.dart';
 import '../../components/badge_widget.dart';
 import '../../../utils/invoice_pdf_service.dart';
@@ -17,79 +15,8 @@ class InvoiceVoucher extends StatelessWidget {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _openPdfPreview(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 800),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(
-                  'Previsualización de Factura ${invoice.invoiceNumber}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                automaticallyImplyLeading: false,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Cerrar Previsualización',
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              body: PdfPreview(
-                build: (format) => InvoicePdfService.generateInvoicePdf(invoice, pageFormat: format),
-                allowPrinting: true,
-                allowSharing: true,
-                canChangeOrientation: false,
-                canChangePageFormat: false,
-                canDebug: false,
-                pdfFileName: 'Factura_${invoice.invoiceNumber}.pdf',
-                previewPageMargin: const EdgeInsets.all(16),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _printInvoice() {
     InvoicePdfService.printInvoice(invoice);
-  }
-
-  void _copyToClipboard(BuildContext context) {
-    final text = '''
-=== COMPROBANTE DE VENTA NORTHWIND ===
-Factura N°: ${invoice.invoiceNumber}
-Fecha de Emisión: ${_formatDate(invoice.createdDate)}
-Cliente: ${invoice.customerName ?? invoice.customerId}
-RUC / Cédula: ${invoice.customerDocument ?? 'No registrada'}
-Vendedor: ${invoice.sellerFullName ?? 'Sistema NorthWind'}
-
---- DETALLE ---
-${invoice.details.map((d) => '${d.quantity}x ${d.productName} @ \$${d.unitPrice.toStringAsFixed(2)} = \$${d.subtotal.toStringAsFixed(2)}').join('\n')}
-
-Subtotal: \$${invoice.subTotal.toStringAsFixed(2)}
-IVA 15%: \$${invoice.tax.toStringAsFixed(2)}
-TOTAL: \$${invoice.total.toStringAsFixed(2)}
-=======================================
-''';
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Comprobante copiado al portapapeles.'),
-        backgroundColor: Color(0xFF059669),
-      ),
-    );
   }
 
   @override
@@ -358,59 +285,29 @@ TOTAL: \$${invoice.total.toStringAsFixed(2)}
                 const SizedBox(height: 24),
 
                 // Modal Actions
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 12,
-                  runSpacing: 10,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        elevation: 0,
                       ),
-                      onPressed: () => _copyToClipboard(context),
-                      icon: const Icon(Icons.copy_rounded, size: 16, color: Color(0xFF475569)),
-                      label: const Text('Copiar Texto', style: TextStyle(color: Color(0xFF475569))),
+                      onPressed: _printInvoice,
+                      icon: const Icon(Icons.print_rounded, size: 16),
+                      label: const Text('Imprimir Comprobante', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF2563EB),
-                            side: const BorderSide(color: Color(0xFFBFDBFE)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          ),
-                          onPressed: () => _openPdfPreview(context),
-                          icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                          label: const Text('Previsualizar PDF', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            elevation: 0,
-                          ),
-                          onPressed: _printInvoice,
-                          icon: const Icon(Icons.print_rounded, size: 16),
-                          label: const Text('Imprimir Comprobante', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF64748B),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cerrar'),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF64748B),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cerrar'),
                     ),
                   ],
                 ),
